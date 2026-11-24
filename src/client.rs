@@ -97,7 +97,8 @@ pub(crate) fn animate(host: &mut dyn ClientHost, p: Pos) {
     }
 }
 
-/// getComparatorInputOverride (getRedstoneSignalFromContainer over the furnace's slots), kept for `analog_output`;
+/// getComparatorInputOverride (getRedstoneSignalFromContainer over the furnace's slots), kept for `analog_output`, which
+/// can't read an item's maximum stack size (sunrise-org/sunrise#5473);
 /// comparators beside it re-read it when it changes (updateNeighbourForOutputSignal).
 pub(crate) fn comparator(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &Fields) {
     let slots = furnace::comparator_slots(host, block, e);

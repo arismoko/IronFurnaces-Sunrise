@@ -13,12 +13,15 @@ What it does:
 - The Settings Linker copies one furnace's settings onto another, and the Wireless Heat Transmitter binds and powers furnaces as in the original.
 - The Rainbow Furnace makes energy when its owner has a generator of every tier.
 - Experience from smelting, comparator output, flames, smoke and sounds as in the original.
-- Optional: JEI shows the generator recipes, and with the `guideme` library W over any Iron Furnaces item opens its guide.
+- Optional: JEI shows the generator recipes.
 
-Differences from the original:
+Differences from the original, each waiting on a piece of Sunrise's mod API:
 
-- In JEI, a generator card shows its energy as text under the card, and its flame and energy bar are not animated.
-- The Settings Linker's settings and the transmitter's energy are kept in the item's custom data instead of the original's own item components.
+- Sunrise doesn't ship the `c:` convention tags yet, so this mod carries the ones its recipes use (sunrise-org/sunrise#1244).
+- The Settings Linker's settings and the transmitter's energy are kept in the item's custom data instead of the original's own item components (sunrise-org/sunrise#1243).
+- A comparator reads the furnace's contents as of its last tick, so it can trail a change by a tick (sunrise-org/sunrise#5473).
+
+In JEI, a generator card shows its energy as text under the card, and its flame and energy bar are not animated: a limit of the JEI port's recipe API, not of Sunrise's.
 """
 authors = ["Sunrise port: Joeypc6", "Qelifern (pizzaatime)", "XenoMustache", "Astryxion", "arismoko"]
 homepage = "https://github.com/arismoko/IronFurnaces-Sunrise"
@@ -32,7 +35,3 @@ caption = "Every furnace tier smelting, with Jade's overlay."
 [[screenshots]]
 path = "page/2-screen.jpg"
 caption = "A furnace's screen."
-
-[[screenshots]]
-path = "page/3-guide.jpg"
-caption = "The W guide, opened from any Iron Furnaces item."
