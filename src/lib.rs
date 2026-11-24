@@ -337,7 +337,7 @@ impl Hooks for Mod {
                     set_i(&mut c, "Energy", energy);
                     set_custom_data(&mut stack, c);
                 }
-                event.drops.push(ItemDrop::new(stack, centre(pos), [0.0; 3], 10));
+                let _ = event.drops.push(ItemDrop::new(stack, centre(pos), [0.0; 3], 10));
             }
         }
         Flow::Continue

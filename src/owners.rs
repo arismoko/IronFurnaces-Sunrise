@@ -10,13 +10,13 @@ fn encode(list: &Vec<Pos>) -> Result<Compound, AttachmentError> {
         flat.extend_from_slice(p);
     }
     let mut c = Compound::new();
-    c.insert(java("furnaces"), Tag::IntArray(flat.into()));
+    c.insert(java("furnaces"), Tag::IntArray(flat));
     Ok(c)
 }
 
 fn decode(c: &Compound) -> Result<Vec<Pos>, AttachmentError> {
     let flat = int_array(c, "furnaces", 0);
-    Ok(flat.chunks_exact(3).map(|p| [p[0], p[1], p[2]]).collect())
+    Ok(flat.as_chunks::<3>().0.iter().map(|p| [p[0], p[1], p[2]]).collect())
 }
 
 pub(crate) static FURNACES_LIST: AttachmentType<Vec<Pos>> = AttachmentType {

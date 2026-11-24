@@ -48,7 +48,7 @@ pub(crate) fn int_array(nbt: &Compound, key: &str, len: usize) -> Vec<i32> {
 
 pub(crate) fn set_int_array(nbt: &mut Compound, key: &str, values: Vec<i32>) {
     if int_array(nbt, key, values.len()) != values || !matches!(nbt.get(&java(key)), Some(Tag::IntArray(_))) {
-        nbt.insert(java(key), Tag::IntArray(values.into()));
+        nbt.insert(java(key), Tag::IntArray(values));
     }
 }
 

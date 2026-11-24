@@ -43,7 +43,10 @@ pub(crate) struct Cooked {
     pub time: u32,
 }
 
-static COOKED: Mutex<Option<HashMap<(Kind, ItemKey), Option<Cooked>>>> = Mutex::new(None);
+/// Each furnace kind's smelting result for an input item, or `None` when it has none.
+type CookedCache = HashMap<(Kind, ItemKey), Option<Cooked>>;
+
+static COOKED: Mutex<Option<CookedCache>> = Mutex::new(None);
 /// The generator recipes: what each takes (item ids) and the energy it gives.
 static GENERATOR: Mutex<Option<Vec<(Ingredient, i32)>>> = Mutex::new(None);
 

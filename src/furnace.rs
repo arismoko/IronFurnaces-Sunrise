@@ -905,7 +905,7 @@ pub(crate) fn owner_of(nbt: &Compound) -> Option<u128> {
 /// `Owner`, as UUIDUtil.CODEC writes it: four ints, most significant first.
 pub(crate) fn set_owner(nbt: &mut Compound, uuid: u128) {
     let words = vec![(uuid >> 96) as u32 as i32, (uuid >> 64) as u32 as i32, (uuid >> 32) as u32 as i32, uuid as u32 as i32];
-    nbt.insert(java("Owner"), Tag::IntArray(words.into()));
+    nbt.insert(java("Owner"), Tag::IntArray(words));
 }
 
 fn output_total(e: &Fields) -> i32 {

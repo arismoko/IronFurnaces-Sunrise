@@ -242,7 +242,7 @@ impl Menu<'_> {
 /// Makes a shift-click of menu slot `index` from the player's inventory (the hook's `stack`) into the furnace whose
 /// fields are lent (`e`), or between the inventory and the hotbar. True when the hook takes the click.
 pub(crate) fn run(host: &mut dyn ServerHost, player: u128, level: LevelRef, block: &str, e: &mut Fields, index: usize, stack: &mut ItemStack) -> bool {
-    if index < INV || index >= END {
+    if !(INV..END).contains(&index) {
         return false;
     }
     if e.items.len() < SLOTS {

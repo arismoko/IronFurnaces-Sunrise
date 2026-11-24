@@ -99,6 +99,7 @@ pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<M
     })
 }
 
+#[allow(clippy::too_many_arguments)] // `GuiGraphics.blit`'s own arguments.
 fn sprite(draw: &mut dyn DrawContext, texture: &str, o: [f32; 2], x: f32, y: f32, u: f32, v: f32, w: f32, h: f32) {
     if w > 0.0 && h > 0.0 {
         draw.sprite(texture, [u, v, w, h], [o[0] + x, o[1] + y, w, h], None);
@@ -432,7 +433,7 @@ pub(crate) fn grouped(n: i32) -> String {
     let digits = n.unsigned_abs().to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(c);
