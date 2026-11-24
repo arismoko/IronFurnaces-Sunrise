@@ -84,8 +84,9 @@ Each comes from a piece the mod API doesn't have yet, filed on Sunrise:
   (sunrise-org/sunrise#5473).
 - **Recipes for absent metals.** The original guards its Silver, Allthemodium, Vibranium, Unobtainium and Copper
   furnace and upgrade recipes, and the Rainbow Plating, with `neoforge:conditions` that hide them when no mod adds the
-  metal. Sunrise's startup recipe load can't read tags yet, so a recipe with such a condition stops the game; here the
-  recipes carry no conditions, show while the metal is absent, and can't be crafted then (sunrise-org/sunrise#5491).
+  metal. Sunrise's startup recipe load can't read tags yet, so a recipe with such a condition stops the game. Here the
+  recipes carry no conditions: while the metal is absent, Sunrise leaves them out anyway, because their ingredient tag
+  is empty, and logs a warning for each (sunrise-org/sunrise#5491).
 - **JEI cards.** In JEI, a generator card shows its energy as text under the card, and its flame and energy bar are not
   animated. This is a limit of the JEI port's recipe API, not of Sunrise's.
 
