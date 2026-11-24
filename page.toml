@@ -20,9 +20,9 @@ Differences from the original:
 - In JEI, a generator card shows its energy as text under the card, and its flame and energy bar are not animated.
 - The Settings Linker's settings and the transmitter's energy are kept in the item's custom data instead of the original's own item components.
 """
-authors = ["Sunrise port: Joeypc6", "Qelifern (pizzaatime)", "XenoMustache", "Astryxion"]
-homepage = "https://github.com/Joeypc6/IronFurnaces-Sunrise"
-issues = "https://github.com/Joeypc6/IronFurnaces-Sunrise/issues"
+authors = ["Sunrise port: Joeypc6", "Qelifern (pizzaatime)", "XenoMustache", "Astryxion", "arismoko"]
+homepage = "https://github.com/arismoko/IronFurnaces-Sunrise"
+issues = "https://github.com/arismoko/IronFurnaces-Sunrise/issues"
 categories = ["technology"]
 
 [[screenshots]]
