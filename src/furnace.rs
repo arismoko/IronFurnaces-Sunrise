@@ -472,7 +472,6 @@ pub(crate) fn tick(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &mut Fie
         e.data.resize(DATA_SLOTS, 0);
     }
     first_tick(host, level, pos, block, e);
-    detect_taken(host, level, pos, e);
     let time = level.game_time(host).unwrap_or(0);
     let was_burning = get_i(&e.nbt, "BurnTime", 0) > 0;
     // currentAugment: a change restarts the burn; a change of the blue one, or of a generator's red, drops the contents.
@@ -528,9 +527,6 @@ pub(crate) fn tick(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &mut Fie
         let jovial = get_i(&e.nbt, "Jovial", 0).clamp(0, 2).to_string();
         set_prop(host, level, pos, "jovial", &jovial);
     }
-    give_taken_experience(host, level, pos, e);
-    let out = output_total(e);
-    set_i(&mut e.nbt, "hz_out", out);
     let facing = level.block_property(host, pos, "facing").unwrap_or_else(|| "north".to_owned());
     fill_data(host, block, e, mode(host, e), &facing);
 }
@@ -908,55 +904,16 @@ pub(crate) fn set_owner(nbt: &mut Compound, uuid: u128) {
     nbt.insert(java("Owner"), Tag::IntArray(words));
 }
 
-fn output_total(e: &Fields) -> i32 {
-    [OUTPUT, 13, 14, 15, 16, 17, 18].iter().filter_map(|&i| e.items.get(i).cloned().flatten()).map(|s| s.count() as i32).sum()
-}
-
-/// Results that left since the last tick other than through the furnace's own item handler (hoppers, pipes, its auto
-/// output) were taken from its screen: SlotIronFurnace.onTake, by the player who has it open.
-fn detect_taken(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, e: &Fields) {
-    let last = get_i(&e.nbt, "hz_out", -1);
-    let now = output_total(e);
-    let automation = with_state(|s| s.automation_out.remove(&(level, pos))).unwrap_or(0);
-    if last < 0 || last - now - automation <= 0 {
-        return;
+/// grantStoredRecipeExperience for `player`: the recipes (unlockRecipes) and the experience, as orbs where they stand.
+pub(crate) fn award(host: &mut dyn ServerHost, player: PlayerRef, ids: &[String], amount: u32) {
+    if !ids.is_empty() {
+        let ids: Vec<&str> = ids.iter().map(String::as_str).collect();
+        let _ = player.award_recipes(host, &ids);
     }
-    let viewers: Vec<u128> = with_state(|s| s.open.iter().filter(|(_, p)| **p == pos).map(|(u, _)| *u).collect());
-    let taker = viewers.into_iter().find(|u| host.player(*u).is_some());
-    if let Some(uuid) = taker {
-        with_state(|s| s.taken.push((uuid, pos)));
-    }
-}
-
-/// SlotIronFurnace.onTake: who took a result gets its experience (splitAndSpawnExperience, as orbs where they stand)
-/// and its recipes (unlockRecipes).
-fn give_taken_experience(_host: &mut dyn ServerHost, level: LevelRef, pos: Pos, e: &mut Fields) {
-    let takers: Vec<u128> = with_state(|s| {
-        let mine: Vec<u128> = s.taken.iter().filter(|(_, p)| *p == pos).map(|(u, _)| *u).collect();
-        s.taken.retain(|(_, p)| *p != pos);
-        mine
-    });
-    for uuid in takers {
-        let (ids, amount) = take_experience(&mut e.nbt);
-        // Given at the next server tick: orbs made during a block entity's tick don't reach the world.
-        with_state(|s| s.awards.push((uuid, level, ids, amount)));
-    }
-}
-
-/// The experience and recipes kept for players who took results (`give_taken_experience`): ExperienceOrb.award where
-/// they stand, and unlockRecipes.
-pub(crate) fn give_awards(host: &mut dyn ServerHost) {
-    for (uuid, level, ids, amount) in with_state(|s| std::mem::take(&mut s.awards)) {
-        let Some(player) = host.player(uuid) else { continue };
-        if !ids.is_empty() {
-            let ids: Vec<&str> = ids.iter().map(String::as_str).collect();
-            let _ = player.award_recipes(host, &ids);
-        }
-        if amount > 0 {
-            let orbs = player.entity().position(host).is_some_and(|at| level.award_experience(host, at[0], at[1], at[2], amount));
-            if !orbs {
-                let _ = player.give_experience_points(host, amount);
-            }
+    if amount > 0 {
+        let orbs = player.level(host).zip(player.entity().position(host)).is_some_and(|(level, at)| level.award_experience(host, at[0], at[1], at[2], amount));
+        if !orbs {
+            let _ = player.give_experience_points(host, amount);
         }
     }
 }

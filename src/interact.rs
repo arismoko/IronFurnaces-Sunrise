@@ -4,7 +4,6 @@
 
 use crate::furnace::{self, SLOTS};
 use crate::util::*;
-use crate::with_state;
 use mod_api::*;
 
 fn player_of(host: &dyn Host, uuid: u128) -> Option<(PlayerRef, LevelRef)> {
@@ -51,26 +50,16 @@ pub(crate) fn facing_for(yaw: f32) -> &'static str {
 }
 
 /// Opens the furnace's screen for `player`: the page shown is the furnace's own (AugmentGUI off, as interactWith).
-pub(crate) fn open(host: &mut dyn ServerHost, player: PlayerRef, uuid: u128, level: LevelRef, pos: Pos) -> bool {
+pub(crate) fn open(host: &mut dyn ServerHost, player: PlayerRef, level: LevelRef, pos: Pos) -> bool {
     let Some(entity) = host.block_entity(level, pos) else { return false };
-    // Only when the augment page is showing: a write just before the menu opens leaves the client's screen cut off
-    // from it (a new furnace has no AugmentGUI yet, so its first screen showed nothing that moved).
     if entity.data(host).is_some_and(|d| get_i(&d, "AugmentGUI", 0) != 0) {
         let mut c = Compound::new();
         set_i(&mut c, "AugmentGUI", 0);
         let _ = entity.merge_data(host, c);
         host.block_entity_sync(pos);
-        reopen_later(uuid, pos);
-        return true;
     }
-    with_state(|s| s.layout_pos = Some(pos));
     pad_slots(host, entity, SLOTS);
-    let opened = matches!(player.open_menu(host, entity), Ok(true));
-    // (After: opening closes the menu that was open, which forgets it.)
-    if opened {
-        with_state(|s| s.open.insert(uuid, pos));
-    }
-    opened
+    matches!(player.open_menu(host, entity), Ok(true))
 }
 
 /// BlockIronFurnaceBase.useWithoutItem with an item in hand, not sneaking.
@@ -133,7 +122,7 @@ pub(crate) fn use_without_item(host: &mut dyn ServerHost, click: &BlockClick<'_>
         set_jovial(host, entity, 0);
         return Some(InteractionResult::Success);
     }
-    open(host, player, click.player, level, pos).then_some(InteractionResult::SuccessServer)
+    open(host, player, level, pos).then_some(InteractionResult::SuccessServer)
 }
 
 fn set_jovial(host: &mut dyn ServerHost, entity: BlockEntityRef, jovial: i32) {
@@ -324,38 +313,8 @@ pub(crate) fn heater_use(host: &mut dyn ServerHost, click: &BlockClick<'_>) -> O
         return None;
     }
     let entity = host.block_entity(level, click.pos)?;
-    with_state(|s| s.layout_pos = Some(click.pos));
     pad_slots(host, entity, 1);
     matches!(player.open_menu(host, entity), Ok(true)).then_some(InteractionResult::SuccessServer)
-}
-
-/// menu_button for the augment page and the furnace page: the slots shown change, so the screen opens again laid
-/// out for the new page (at the next server tick: the entity is out of the world during the button).
-pub(crate) fn reopen_later(uuid: u128, pos: Pos) {
-    // Two ticks on: the block entity's update (the page, for the client's layout) reaches the client first.
-    with_state(|s| s.reopen.push((uuid, pos, 2)));
-}
-
-pub(crate) fn reopen_pending(host: &mut dyn ServerHost) {
-    let pending: Vec<(u128, Pos)> = with_state(|s| {
-        for r in s.reopen.iter_mut() {
-            r.2 -= 1;
-        }
-        let due = s.reopen.iter().filter(|r| r.2 <= 0).map(|r| (r.0, r.1)).collect();
-        s.reopen.retain(|r| r.2 > 0);
-        due
-    });
-    for (uuid, pos) in pending {
-        let Some((player, level)) = player_of(host, uuid) else { continue };
-        let Some(entity) = host.block_entity(level, pos) else { continue };
-        host.block_entity_sync(pos);
-        with_state(|s| s.layout_pos = Some(pos));
-        let slots = if host.level(host.dimension()).and_then(|l| l.block(&*host, pos)).and_then(|b| b.id(&*host)).is_some_and(furnace::is_heater) { 1 } else { SLOTS };
-        pad_slots(host, entity, slots);
-        if matches!(player.open_menu(host, entity), Ok(true)) {
-            with_state(|s| s.open.insert(uuid, pos));
-        }
-    }
 }
 
 /// Workaround for sunrise-org/sunrise#4463 (Sunrise main): a new block entity holds no item slots until one is

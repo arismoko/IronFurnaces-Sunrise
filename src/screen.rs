@@ -4,7 +4,7 @@
 
 use crate::furnace::{self, *};
 use crate::util::*;
-use crate::{config, interact, with_state};
+use crate::{config, with_state};
 use mod_api::*;
 
 // Menu buttons.
@@ -49,11 +49,15 @@ fn page_of(host: &dyn Host, pos: Pos) -> Option<(bool, i32)> {
 /// for the block it opened on, drawn, clicked and hovered from the menu's live data.
 pub(crate) fn create(host: &dyn ClientHost, open: MenuScreenOpen<'_>) -> Option<MenuScreen> {
     let block = open.block?.to_owned();
+    let menu = open.menu.to_owned();
     let screen = MenuScreen::new(layout(host, &block, open.pos)?);
     let (on_draw, on_click, on_tooltip) = (block.clone(), block.clone(), block);
     Some(
         screen
-            .with_draw(move |host, frame, ctx| draw(host, &on_draw, frame.data, ctx, frame.origin))
+            .with_draw(move |host, frame, ctx| {
+                relayout(host, &menu, &on_draw, frame.data);
+                draw(host, &on_draw, frame.data, ctx, frame.origin)
+            })
             .with_click(move |host, frame, right| click(host, &on_click, frame.data, frame.at, right))
             .with_tooltip(move |host, frame, _slot, lines| {
                 let mut own = Vec::new();
@@ -63,8 +67,8 @@ pub(crate) fn create(host: &dyn ClientHost, open: MenuScreenOpen<'_>) -> Option<
     )
 }
 
-/// The screen's layout: its size, and where each slot of the page shown sits. A slot the page doesn't show has no
-/// place, so it is neither drawn nor clicked, and the server's menu leaves it out too (`native_hidden_slots`).
+/// The screen's layout when it opens: its size, and where each slot of the page shown sits. A slot the page doesn't
+/// show has no place, so it is neither drawn nor clicked.
 pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<MenuScreenLayout> {
     if is_heater(block) {
         return Some(MenuScreenLayout {
@@ -82,8 +86,6 @@ pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<M
     if !is_furnace(block) {
         return None;
     }
-    // The block the menu opened on, or, when the opening names none, the one last clicked.
-    let pos = pos.or_else(|| with_state(|s| s.layout_pos));
     let (augment_page, mode) = pos.and_then(|pos| page_of(host, pos)).unwrap_or((false, 0));
     let tier = config::tier(host, block);
     let slots = (0..SLOTS).map(|i| slot_shown(augment_page, mode, tier, i).then_some(slot_at(AT[i]))).collect();
@@ -97,6 +99,19 @@ pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<M
         own_background: true,
         ..MenuScreenLayout::default()
     })
+}
+
+/// The Slot subclasses' isActive, read each frame: when the page or the mode changes (the menu's live data), the
+/// slots it shows move in and the others leave from the next frame.
+fn relayout(host: &dyn ClientHost, menu: &str, block: &str, data: &[i32]) {
+    let (Some(&augment_page), Some(&mode)) = (data.get(D_AUGMENT_GUI), data.get(D_MODE)) else { return };
+    if !is_furnace(block) {
+        return;
+    }
+    let tier = config::tier(host, block);
+    for (i, at) in AT.iter().enumerate() {
+        let _ = host.set_screen_slot(menu, i, slot_shown(augment_page != 0, mode, tier, i).then_some(*at));
+    }
 }
 
 #[allow(clippy::too_many_arguments)] // `GuiGraphics.blit`'s own arguments.
@@ -534,8 +549,6 @@ pub(crate) fn menu_button(host: &mut dyn ServerHost, player: u128, pos: Pos, id:
         B_AUGMENT_GUI => {
             toggle(nbt, "AugmentGUI");
             host.block_entity_sync(pos);
-            // The page's slots change: the screen opens again, laid out for it.
-            interact::reopen_later(player, pos);
         }
         B_AUTO_IN | B_AUTO_OUT => {
             let mut auto = int_array(nbt, "AutoIO", 2);

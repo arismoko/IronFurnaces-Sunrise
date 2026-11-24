@@ -39,18 +39,6 @@ use std::sync::{Mutex, OnceLock};
 pub(crate) struct Shared {
     /// Server: who placed a furnace, until its block entity's first tick (setPlacedBy), by dimension and position.
     pub placed: HashMap<(String, Pos), u128>,
-    /// Server: the furnace each player has open.
-    pub open: HashMap<u128, Pos>,
-    /// Server: a player clicked an output slot and may have taken the result (SlotIronFurnace.onTake).
-    pub taken: Vec<(u128, Pos)>,
-    /// Server: experience and recipes to give at the next server tick (player, level, recipes, points).
-    pub awards: Vec<(u128, LevelRef, Vec<String>, u32)>,
-    /// Server: results taken through the furnaces' item handler since their last tick, by dimension and position.
-    pub automation_out: HashMap<(LevelRef, Pos), i32>,
-    /// Server: screens to open again, laid out for the page they now show.
-    pub reopen: Vec<(u128, Pos, i32)>,
-    /// Both: the furnace whose screen opens next (the screen hook isn't told which block entity it is for).
-    pub layout_pos: Option<Pos>,
     /// Server: what a furnace kept for experience, and a transmitter's energy, from its removal to its drops.
     pub xp_on_break: HashMap<Pos, u32>,
     pub heater_on_break: HashMap<Pos, i32>,
@@ -221,12 +209,6 @@ impl Hooks for Mod {
         );
     }
 
-    fn player_container_close(&self, _host: &mut dyn ServerHost, event: &mut PlayerContainerCloseEvent<'_>) {
-        let player = event.player;
-        with_state(|s| {
-            s.open.remove(&player);
-        });
-    }
 
     /// With AE2 installed: the furnaces' craft times for its crafting jobs' time left (`ae2_eta`).
     fn server_starting(&self, host: &mut dyn ServerHost, _event: &mut ServerStartingEvent) {
@@ -235,26 +217,8 @@ impl Hooks for Mod {
         });
     }
 
-    fn server_tick(&self, host: &mut dyn ServerHost, _event: &mut ServerTickEvent<'_>) {
-        furnace::give_awards(host);
-        interact::reopen_pending(host);
-    }
-
     fn tags_updated(&self, _context: &dyn ReloadContext, _event: &mut TagsUpdatedEvent) {
         recipes::forget();
-    }
-
-    fn right_click_block(&self, host: HostSide, event: &mut RightClickBlockEvent<'_>) -> Flow {
-        // The client's screen hook is told only the block: the furnace clicked is the one whose screen opens.
-        if let HostSide::Client(host) = host
-            && let Some(level) = host.level(host.dimension())
-            && let Some(block) = level.block(&*host, event.click.pos).and_then(|b| b.id(&*host).map(str::to_owned))
-            && (is_furnace(&block) || is_heater(&block))
-        {
-            let pos = event.click.pos;
-            with_state(|s| s.layout_pos = Some(pos));
-        }
-        Flow::Continue
     }
 
     fn entity_place(&self, host: &mut dyn ServerHost, event: &mut EntityPlaceEvent) -> Flow {
@@ -527,6 +491,23 @@ impl MenuPart for Menus {
         if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
             let _ = handle.set_changed(event.subject.host());
         }
+    }
+
+    /// SlotIronFurnace.onTake: whoever takes a result gets the furnace's stored experience, as orbs where they stand, and
+    /// its recipes (unlockRecipes).
+    fn menu_slot_take(&self, event: &mut MenuSlotTakeEvent<'_>) {
+        if event.menu != "ironfurnaces:furnace" || !(event.slot == furnace::OUTPUT || (13..=18).contains(&event.slot)) {
+            return;
+        }
+        let Some((handle, before)) = event.subject.with_view(|view| (view.handle(), fields_of(&view))) else { return };
+        let mut entity = before.clone();
+        let (ids, amount) = furnace::take_experience(&mut entity.nbt);
+        if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
+            let _ = handle.set_changed(event.subject.host());
+        }
+        let host = event.subject.host();
+        let Some(player) = host.player(event.player) else { return };
+        furnace::award(host, player, &ids, amount);
     }
 
     fn menu_slot_rules(&self, _host: &dyn Host, event: &mut MenuSlotRulesEvent<'_>) {

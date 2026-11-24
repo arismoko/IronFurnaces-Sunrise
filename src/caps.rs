@@ -113,13 +113,7 @@ impl ResourceHandler<ItemResource> for FurnaceItems {
         let rest = with_count(held, held.count() - n);
         let rest = if held.count() == n { None } else { rest };
         match entity.set_item_slot(host, tx, slot as u32, rest) {
-            Ok(true) => {
-                if slot == furnace::OUTPUT || (13..=18).contains(&slot) {
-                    let key = (self.0.level, self.0.pos);
-                    crate::with_state(|s| *s.automation_out.entry(key).or_default() += n as i32);
-                }
-                Ok(n)
-            }
+            Ok(true) => Ok(n),
             _ => Ok(0),
         }
     }
