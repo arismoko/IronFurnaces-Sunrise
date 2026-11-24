@@ -58,7 +58,6 @@ pub(crate) fn open(host: &mut dyn ServerHost, player: PlayerRef, level: LevelRef
         let _ = entity.merge_data(host, c);
         host.block_entity_sync(pos);
     }
-    pad_slots(host, entity, SLOTS);
     matches!(player.open_menu(host, entity), Ok(true))
 }
 
@@ -313,23 +312,5 @@ pub(crate) fn heater_use(host: &mut dyn ServerHost, click: &BlockClick<'_>) -> O
         return None;
     }
     let entity = host.block_entity(level, click.pos)?;
-    pad_slots(host, entity, 1);
     matches!(player.open_menu(host, entity), Ok(true)).then_some(InteractionResult::SuccessServer)
-}
-
-/// Workaround for sunrise-org/sunrise#4463 (Sunrise main): a new block entity holds no item slots until one is
-/// written, and a menu opened on it is sized by the slots it holds, not by its container's `slots`. A shift-click
-/// there is mapped to the wrong inventory slot and the clicked stack stays as it moves (a duplicate). Writing the last
-/// of the `slots` once, and clearing it, makes the entity hold all of them and leaves its contents as they were.
-fn pad_slots(host: &mut dyn ServerHost, entity: BlockEntityRef, slots: usize) {
-    let Some(last) = slots.checked_sub(1) else { return };
-    if !matches!(entity.item_slot(&*host, last as u32), Ok(None)) {
-        return;
-    }
-    let Some(filler) = stack_of(&*host, "minecraft:stone", 1) else { return };
-    let _ = host.transaction(|host, tx| {
-        entity.set_item_slot(host, tx, last as u32, Some(filler)).map_err(|_| ())?;
-        entity.set_item_slot(host, tx, last as u32, None).map_err(|_| ())?;
-        Ok::<(), ()>(())
-    });
 }
