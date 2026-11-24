@@ -34,7 +34,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
 /// What both sides keep between hooks. One mod instance serves the client and the server game, so it is behind a
-/// lock (the fork's rule: hooks are `&self + Send + Sync`).
+/// lock (Sunrise's hooks are `&self + Send + Sync`).
 #[derive(Default)]
 pub(crate) struct Shared {
     /// Server: who placed a furnace, until its block entity's first tick (setPlacedBy), by dimension and position.
@@ -488,6 +488,10 @@ impl MenuPart for Menus {
         let Some((handle, before)) = event.subject.with_view(|view| (view.handle(), fields_of(&view))) else { return };
         let mut entity = before.clone();
         screen::menu_button(event.subject.host(), event.context.player, pos, event.context.id, &mut entity.nbt);
+        // The page shows from this click on, as the menu's live ContainerData does, not from the next tick.
+        if let Some(page) = entity.data.get_mut(furnace::D_AUGMENT_GUI) {
+            *page = util::get_i(&entity.nbt, "AugmentGUI", 0);
+        }
         if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
             let _ = handle.set_changed(event.subject.host());
         }

@@ -104,11 +104,10 @@ pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<M
 /// The Slot subclasses' isActive, read each frame: when the page or the mode changes (the menu's live data), the
 /// slots it shows move in and the others leave from the next frame.
 fn relayout(host: &dyn ClientHost, menu: &str, block: &str, data: &[i32]) {
-    let (Some(&augment_page), Some(&mode)) = (data.get(D_AUGMENT_GUI), data.get(D_MODE)) else { return };
+    let (Some(&augment_page), Some(&mode), Some(&tier)) = (data.get(D_AUGMENT_GUI), data.get(D_MODE), data.get(D_TIER)) else { return };
     if !is_furnace(block) {
         return;
     }
-    let tier = config::tier(host, block);
     for (i, at) in AT.iter().enumerate() {
         let _ = host.set_screen_slot(menu, i, slot_shown(augment_page != 0, mode, tier, i).then_some(*at));
     }

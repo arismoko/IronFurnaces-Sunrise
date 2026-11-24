@@ -56,6 +56,8 @@ pub(crate) fn open(host: &mut dyn ServerHost, player: PlayerRef, level: LevelRef
         let mut c = Compound::new();
         set_i(&mut c, "AugmentGUI", 0);
         let _ = entity.merge_data(host, c);
+        // The menu's data, which the opening screen reads, as interactWith's field.
+        let _ = entity.set_data_slot(host, crate::furnace::D_AUGMENT_GUI as u32, 0);
         host.block_entity_sync(pos);
     }
     matches!(player.open_menu(host, entity), Ok(true))
