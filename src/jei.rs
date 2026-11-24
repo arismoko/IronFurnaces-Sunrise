@@ -1,4 +1,4 @@
-//! IronFurnacesJEIPlugin through the JEI fork's API (`jei::api`, ../jei-fork): the three generator categories
+//! IronFurnacesJEIPlugin through the JEI port's API (`jei::api`): the three generator categories
 //! (RecipeCategoryGeneratorRegular, Blasting and Smoking: an item, and the energy it gives) and the catalysts (the
 //! furnaces and the factory augment for smelting, the blasting and smoking augments for theirs, the generator augment
 //! for the generators'). Registered on the client, only where JEI is installed.

@@ -140,8 +140,7 @@ pub(crate) fn sneaking(host: &dyn Host, player: PlayerRef) -> bool {
     entity.is_shift_key_down(host).unwrap_or(false) || entity.is_crouching(host).unwrap_or(false)
 }
 
-/// A slot of a screen at `position` (GUI pixels from the screen's corner), with no empty-slot icon: Sunrise's screens
-/// take `ScreenSlot`s since 2d81263.
+/// A slot of a screen at `position` (GUI pixels from the screen's corner), with no empty-slot icon.
 pub(crate) fn slot_at(position: [f32; 2]) -> ScreenSlot {
     ScreenSlot { position, no_item_icon: None }
 }

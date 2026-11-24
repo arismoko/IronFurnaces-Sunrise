@@ -1,4 +1,4 @@
-//! Applied Energistics 2's crafting ETA (this port's addition, as on the Horizon port): with AE2 installed, a furnace
+//! Applied Energistics 2's crafting ETA (this port's addition): with AE2 installed, a furnace
 //! tells it how long a craft of a processing pattern takes (`ae2::api::register_machine`), so a job's time left is right
 //! from the first craft. The time is the furnace's own: its tier's speed against the recipe's time, the speed and fuel
 //! augments (`getCookTime`), how many it smelts at once (the Rainbow, Allthemodium, Vibranium and Unobtainium mult),

@@ -5,7 +5,7 @@
 - Shift-clicking a whole stack empties its slot; the stand-in item that used to fill it is gone.
 - Taking a result gives its experience and recipes at once.
 - The augment page and the factory and generator modes move the slots in place instead of reopening the screen.
-- Recipes keep the original's load conditions: the Silver and Allthemodium recipes appear only when those metals exist.
+- The recipes now equal the original's; only their load conditions wait for a Sunrise fix (sunrise-org/sunrise#5491).
 
 ## 4.4.9 (2026-11-21)
 
