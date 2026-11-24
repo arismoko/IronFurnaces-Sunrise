@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.4.12 (2026-11-24)
+## 4.4.13 (2026-11-24)
 
 - Shift-clicking a whole stack empties its slot; the stand-in item that used to fill it is gone.
 - Taking a result gives its experience and recipes at once.
