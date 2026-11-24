@@ -84,7 +84,6 @@ pub(crate) struct Keys {
     pub heater: ItemKey,
     pub million: ItemKey,
     pub rainbow_coal: ItemKey,
-    pub moved: ItemKey,
     pub augments: [(ItemKey, usize); 6],
     pub smoke: ParticleKey,
     pub flame: ParticleKey,
@@ -104,8 +103,6 @@ pub(crate) struct Heater;
 pub(crate) struct Tool;
 /// The transmitter's item: its stored energy's bar, and the energy it places with.
 pub(crate) struct HeaterItem;
-/// The shift-click stand-in (`quickmove`): gone wherever it is seen.
-pub(crate) struct StandIn;
 /// The menus' slot rules.
 pub(crate) struct Menus;
 
@@ -157,8 +154,6 @@ impl Hooks for Mod {
             let key = r.item_key(&format!("ironfurnaces:{name}"));
             r.item_part(key, Tool);
         }
-        let moved = r.item_key("ironfurnaces:moved");
-        r.item_part(moved, StandIn);
         let heater_item = r.item_key("ironfurnaces:heater");
         r.item_part(heater_item, HeaterItem);
         let mut augment = |id: &str, slot| (r.item_key(id), slot);
@@ -176,7 +171,6 @@ impl Hooks for Mod {
             heater: heater_item,
             million: r.item_key("ironfurnaces:million_furnace"),
             rainbow_coal: r.item_key("ironfurnaces:rainbow_coal"),
-            moved: r.item_key("ironfurnaces:moved"),
             augments,
             smoke: r.particle_key("minecraft:smoke"),
             flame: r.particle_key("minecraft:flame"),
@@ -225,33 +219,6 @@ impl Hooks for Mod {
                 extract_faces: [false; 6],
             },
         );
-    }
-
-    fn player_inventory_changed(&self, host: &mut dyn ServerHost, event: &mut PlayerInventoryChangedEvent<'_>) {
-        if event.stacks.iter().flatten().any(quickmove::is_marked) {
-            quickmove::sweep(host, event.player, event.stacks);
-        }
-    }
-
-    fn entity_join_level(&self, host: &mut dyn ServerHost, event: &mut EntityJoinLevelEvent<'_>) -> Flow {
-        // A shift-click's stand-in never enters the world as a dropped item (a toss, a death, a full inventory).
-        let place = ItemPlace::ItemEntity { id: event.entity };
-        if event.kind == "minecraft:item"
-            && place.with_stack(host, |s| s.project()).flatten().is_some_and(|s| quickmove::is_marked(&s))
-        {
-            return Flow::Cancel;
-        }
-        Flow::Continue
-    }
-
-    fn hopper_pickup_item(&self, _level: &dyn LevelHost, event: &mut HopperPickupItemEvent<'_>) -> Flow {
-        if event.item == quickmove::MOVED { Flow::Cancel } else { Flow::Continue }
-    }
-
-    fn item_toss(&self, host: &mut dyn ServerHost, event: &mut ItemTossEvent) -> Flow {
-        // The toss now names the item entity, not the item: a stand-in's stack is never tossed.
-        let marked = event.item.with_stack(&*host, |s| s.project()).flatten().is_some_and(|s| quickmove::is_marked(&s));
-        if marked { Flow::Cancel } else { Flow::Continue }
     }
 
     fn player_container_close(&self, _host: &mut dyn ServerHost, event: &mut PlayerContainerCloseEvent<'_>) {
@@ -460,10 +427,8 @@ impl BlockEntityPart for Furnace {
         let Some(player) = host.players().acting_player().and_then(|p| p.entity().uuid(host)) else { return Flow::Continue };
         let Some(level) = host.level(host.dimension()) else { return Flow::Continue };
         let Some(block) = level.block(host, pos).and_then(|b| b.id(host).map(str::to_owned)) else { return Flow::Continue };
-        // An empty slot: nothing to move.
-        let Some(stack) = event.stack.as_mut() else { return Flow::Continue };
         let mut entity = before.clone();
-        let handled = quickmove::run(host, player, level, &block, &mut entity, event.slot, stack);
+        let handled = quickmove::run(host, player, level, &block, &mut entity, event.slot, event.stack);
         if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
             let _ = handle.set_changed(event.subject.host());
         }
@@ -543,27 +508,6 @@ impl ItemPart for HeaterItem {
         if let Some(energy) = tooltip::heater_energy(event.stack) {
             *event.bar = Some(((13.0 * (f64::from(energy) / 1_000_000.0)) as i32, (-8_387_072i32) as u32));
         }
-    }
-}
-
-#[mod_api::sunrise_part]
-impl ItemPart for StandIn {
-    fn inventory_tick(&self, host: &mut dyn ServerHost, event: &mut InventoryTickEvent<'_>) {
-        // (After the inventory check took it, nothing is left here; this is for a stand-in that got past it.)
-        let Some(player) = host.players().acting_player().and_then(|p| p.entity().uuid(host)) else { return };
-        let place = ItemPlace::PlayerSlot { player, slot: event.slot };
-        let resource = ItemResource::of(event.stack);
-        let count = event.stack.count();
-        let _ = host.transaction(|host, tx| match place.extract(host, tx, &resource, count) {
-            Ok(n) if n == count => Ok(()),
-            _ => Err(()),
-        });
-    }
-
-    fn on_entity_item_update(&self, event: &mut OnEntityItemUpdateEvent<'_>) -> Flow {
-        let Some(entity) = event.subject.with_view(|item| item.entity()) else { return Flow::Cancel };
-        let _ = entity.discard(event.subject.host());
-        Flow::Cancel
     }
 }
 

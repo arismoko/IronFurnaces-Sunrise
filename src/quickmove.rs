@@ -3,10 +3,8 @@
 //! between the inventory and the hotbar), and vanilla's loop that asks again while the same item keeps moving.
 //!
 //! Made in `menu_quick_move`, with the player's state swapped in: the furnace's slots in the lent entity, the player's
-//! other slots through `ItemPlace`, and the clicked slot through the hook's `stack`, which it keeps. That `stack` can't
-//! be empty (an `ItemStack` never is), so when everything left the slot it holds a stand-in (`ironfurnaces:moved`, an
-//! item of its own, so the inventory check sees another item there), taken out at the player's inventory check of the
-//! same tick (`player_inventory_changed`, the player swapped in again), wherever it is by then.
+//! other slots through `ItemPlace`, and the clicked slot through the hook's `stack`, which it keeps (`None` when all of
+//! it moved).
 
 use crate::furnace::{self, Fields, SLOTS};
 use crate::util::*;
@@ -17,9 +15,6 @@ use mod_api::*;
 const INV: usize = SLOTS;
 const HOTBAR: usize = SLOTS + 27;
 const END: usize = SLOTS + 36;
-
-/// The stand-in for a stack whose items all moved (see the module's comment).
-pub(crate) const MOVED: &str = "ironfurnaces:moved";
 
 /// The player inventory slot (0..9 hotbar, 9..36 main) behind menu slot `i` (from `INV`).
 fn player_slot(i: usize) -> i32 {
@@ -241,7 +236,9 @@ impl Menu<'_> {
 
 /// Makes a shift-click of menu slot `index` from the player's inventory (the hook's `stack`) into the furnace whose
 /// fields are lent (`e`), or between the inventory and the hotbar. True when the hook takes the click.
-pub(crate) fn run(host: &mut dyn ServerHost, player: u128, level: LevelRef, block: &str, e: &mut Fields, index: usize, stack: &mut ItemStack) -> bool {
+pub(crate) fn run(host: &mut dyn ServerHost, player: u128, level: LevelRef, block: &str, e: &mut Fields, index: usize, clicked: &mut Option<ItemStack>) -> bool {
+    let Some(stack) = clicked.clone() else { return false };
+    let stack = &stack;
     if !(INV..END).contains(&index) {
         return false;
     }
@@ -299,36 +296,6 @@ pub(crate) fn run(host: &mut dyn ServerHost, player: u128, level: LevelRef, bloc
             e.items[i] = after[i].clone();
         }
     }
-    match &after[index] {
-        Some(left) => *stack = left.clone(),
-        None => {
-            // All of it moved: the stand-in, taken out at the inventory check.
-            if let Some(stand_in) = stack_of(&*host, MOVED, 1) {
-                *stack = stand_in;
-            }
-        }
-    }
+    *clicked = after[index].clone();
     true
-}
-
-/// Whether a stack is the stand-in.
-pub(crate) fn is_marked(stack: &ItemStack) -> bool {
-    crate::KEYS.get().is_some_and(|k| stack.item() == k.moved)
-}
-
-/// `player_inventory_changed`: the stand-ins go (their items moved already).
-pub(crate) fn sweep(host: &mut dyn ServerHost, player: u128, stacks: &[Option<ItemStack>]) {
-    let marked: Vec<(i32, ItemStack)> = stacks
-        .iter()
-        .enumerate()
-        .filter_map(|(i, s)| s.as_ref().filter(|s| is_marked(s)).map(|s| (i, s.clone())))
-        .map(|(i, s)| (match i { 36..=39 => 100 + (i as i32 - 36), 40 => -106, _ => i as i32 }, s))
-        .collect();
-    for (slot, s) in marked {
-        let place = ItemPlace::PlayerSlot { player, slot };
-        let _ = host.transaction(|host, tx| match place.extract(host, tx, &ItemResource::of(&s), s.count()) {
-            Ok(n) if n == s.count() => Ok(()),
-            _ => Err(()),
-        });
-    }
 }
