@@ -68,12 +68,14 @@ fn values(host: &dyn Host) -> &'static HashMap<String, i32> {
 }
 
 fn read(host: &dyn Host) -> String {
-    let files = host.config_files();
-    let Ok(path) = ConfigPath::new(FILE) else { return String::new() };
-    match files.read(&path) {
+    let path = host.config_dir().join(FILE);
+    match std::fs::read(&path) {
         Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
         Err(_) => {
-            let _ = files.write(&path, DEFAULT.as_bytes());
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let _ = std::fs::write(&path, DEFAULT);
             String::new()
         }
     }

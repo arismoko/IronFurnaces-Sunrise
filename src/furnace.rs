@@ -454,8 +454,8 @@ fn energy_out(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mut F
 }
 
 fn set_prop(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, key: &str, value: &str) {
-    if level.block_property(host, pos, key).as_deref() != Some(value) {
-        host.set_block_property_with(pos, key, value, 3);
+    if level.block_property(&*host, pos, key) != Some(value) {
+        let _ = level.set_block_property(host, pos, key, value, BlockUpdateFlags::NEIGHBORS | BlockUpdateFlags::CLIENTS);
     }
 }
 
@@ -493,7 +493,7 @@ pub(crate) fn tick(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &mut Fie
     // The client's copy: what its screen shows and its particles (block_entity_update_tag).
     if get_i(&e.nbt, "hz_mode", -1) != m {
         set_i(&mut e.nbt, "hz_mode", m);
-        host.block_entity_sync(pos);
+        sync_at(host, level, pos);
     }
     if is_rainbow(block) {
         rainbow_tick(host, level, pos, e, m);
@@ -527,7 +527,7 @@ pub(crate) fn tick(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &mut Fie
         let jovial = get_i(&e.nbt, "Jovial", 0).clamp(0, 2).to_string();
         set_prop(host, level, pos, "jovial", &jovial);
     }
-    let facing = level.block_property(host, pos, "facing").unwrap_or_else(|| "north".to_owned());
+    let facing = level.block_property(&*host, pos, "facing").unwrap_or("north").to_owned();
     fill_data(host, block, e, mode(host, e), &facing);
 }
 
@@ -913,7 +913,9 @@ pub(crate) fn award(host: &mut dyn ServerHost, player: PlayerRef, ids: &[String]
     if amount > 0 {
         let orbs = player.level(host).zip(player.entity().position(host)).is_some_and(|(level, at)| level.award_experience(host, at[0], at[1], at[2], amount));
         if !orbs {
-            let _ = player.give_experience_points(host, amount);
+            if let Ok(points) = i32::try_from(amount) {
+                let _ = player.give_experience_points(host, points);
+            }
         }
     }
 }

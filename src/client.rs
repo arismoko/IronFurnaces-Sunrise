@@ -42,11 +42,11 @@ pub(crate) fn animate(host: &mut dyn ClientHost, p: Pos) {
         if next(&mut seed) >= chance {
             return;
         }
-        if level.block_property(&*host, p, "lit").as_deref() != Some("true") {
+        if level.block_property(&*host, p, "lit") != Some("true") {
             return;
         }
-        let kind = level.block_property(&*host, p, "type").unwrap_or_default();
-        let facing = level.block_property(&*host, p, "facing").unwrap_or_default();
+        let kind = level.block_property(&*host, p, "type").unwrap_or_default().to_owned();
+        let facing = level.block_property(&*host, p, "facing").unwrap_or_default().to_owned();
         let (x, y, z) = (f64::from(p[0]) + 0.5, f64::from(p[1]), f64::from(p[2]) + 0.5);
         let step = match facing.as_str() {
             "south" => [0.0, 1.0],
@@ -60,7 +60,7 @@ pub(crate) fn animate(host: &mut dyn ClientHost, p: Pos) {
         let flame = ParticleOptions::simple(keys.flame);
         let sound = |id: &str| SoundPlay::at(id, SoundSource::Blocks, [x, y, z]);
         // BlockMillionFurnace: a generating Rainbow Furnace's crits on its four sides.
-        if level.block_property(&*host, p, "rainbow").as_deref() == Some("true") {
+        if level.block_property(&*host, p, "rainbow") == Some("true") {
             let crit = ParticleOptions::simple(keys.crit);
             for s in [[0.0, -1.0], [0.0, 1.0], [-1.0, 0.0], [1.0, 0.0]] {
                 let side = next(&mut seed) * 0.6 - 0.3;

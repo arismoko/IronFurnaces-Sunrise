@@ -58,7 +58,7 @@ pub(crate) fn open(host: &mut dyn ServerHost, player: PlayerRef, level: LevelRef
         let _ = entity.merge_data(host, c);
         // The menu's data, which the opening screen reads, as interactWith's field.
         let _ = entity.set_data_slot(host, crate::furnace::D_AUGMENT_GUI as u32, 0);
-        host.block_entity_sync(pos);
+        let _ = entity.sync(host);
     }
     matches!(player.open_menu(host, entity), Ok(true))
 }
@@ -97,7 +97,7 @@ pub(crate) fn use_item_on(host: &mut dyn ServerHost, click: &BlockClick<'_>) -> 
         if !creative {
             take_one(host, click.player, click.hand, stack);
         }
-        host.block_entity_sync(pos);
+        let _ = entity.sync(host);
         return Some(InteractionResult::Success);
     }
     match id.as_str() {
@@ -130,8 +130,10 @@ fn set_jovial(host: &mut dyn ServerHost, entity: BlockEntityRef, jovial: i32) {
     let mut c = Compound::new();
     set_i(&mut c, "Jovial", jovial);
     let _ = entity.merge_data(host, c);
-    if let Some(pos) = entity.position(host) {
-        host.set_block_property_with(pos, "jovial", &jovial.to_string(), 3);
+    if let Some(pos) = entity.position(host)
+        && let Some(level) = entity.level(host)
+    {
+        let _ = level.set_block_property(host, pos, "jovial", &jovial.to_string(), BlockUpdateFlags::NEIGHBORS | BlockUpdateFlags::CLIENTS);
     }
 }
 
@@ -145,7 +147,7 @@ fn copy_settings(host: &mut dyn ServerHost, player: PlayerRef, click: &BlockClic
     set_i(&mut tag, "Redstone", get_i(&data, "Redstone", 0));
     set_i(&mut tag, "AugmentGUI", get_i(&data, "AugmentGUI", 0));
     set_i(&mut tag, "AutoSplit", get_i(&data, "AutoSplit", 0));
-    let facing = level.block_property(host, pos, "facing").unwrap_or_else(|| "north".to_owned());
+    let facing = level.block_property(&*host, pos, "facing").unwrap_or("north");
     let direction = ["down", "up", "north", "south", "west", "east"].iter().position(|f| *f == facing).unwrap_or(2) as i32;
     set_i(&mut tag, "direction", direction);
     let mut written = stack.clone();
@@ -188,9 +190,9 @@ fn apply_settings(host: &mut dyn ServerHost, player: PlayerRef, stack: &ItemStac
         if let Some(facing) = facing
             && facing != "up"
             && facing != "down"
-            && level.block_property(host, pos, "facing").as_deref() != Some(facing)
+            && level.block_property(&*host, pos, "facing") != Some(facing)
         {
-            host.set_block_property_with(pos, "facing", facing, 3);
+            let _ = level.set_block_property(host, pos, "facing", facing, BlockUpdateFlags::NEIGHBORS | BlockUpdateFlags::CLIENTS);
         }
     }
     let _ = player.tell(host, Text::literal("Settings applied"));

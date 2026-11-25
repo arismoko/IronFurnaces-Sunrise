@@ -547,7 +547,7 @@ pub(crate) fn menu_button(host: &mut dyn ServerHost, player: u128, pos: Pos, id:
         B_SPLIT => toggle(nbt, "AutoSplit"),
         B_AUGMENT_GUI => {
             toggle(nbt, "AugmentGUI");
-            host.block_entity_sync(pos);
+            sync_at(host, level, pos);
         }
         B_AUTO_IN | B_AUTO_OUT => {
             let mut auto = int_array(nbt, "AutoIO", 2);
@@ -559,8 +559,8 @@ pub(crate) fn menu_button(host: &mut dyn ServerHost, player: u128, pos: Pos, id:
         B_RESET_SIDES => set_int_array(nbt, "Settings", vec![0; 6]),
         _ if (B_SIDE..B_SIDE + 30).contains(&id) => {
             let (i, setting) = (((id - B_SIDE) / 5) as usize, (id - B_SIDE) % 5);
-            let facing = level.block_property(host, pos, "facing").unwrap_or_else(|| "north".to_owned());
-            let order = furnace::screen_sides(&facing);
+            let facing = level.block_property(host, pos, "facing").unwrap_or("north");
+            let order = furnace::screen_sides(facing);
             let mut sides = int_array(nbt, "Settings", 6);
             sides[order[i]] = setting;
             set_int_array(nbt, "Settings", sides);

@@ -135,6 +135,13 @@ pub(crate) fn set_custom_data(stack: &mut ItemStack, data: Compound) {
     let _ = stack.set_components(patch);
 }
 
+/// Sends the block entity at `pos` to the clients that see it (`sendBlockUpdated`).
+pub(crate) fn sync_at(host: &mut dyn ServerHost, level: LevelRef, pos: Pos) {
+    if let Some(entity) = host.block_entity(level, pos) {
+        let _ = entity.sync(host);
+    }
+}
+
 pub(crate) fn sneaking(host: &dyn Host, player: PlayerRef) -> bool {
     let entity = player.entity();
     entity.is_shift_key_down(host).unwrap_or(false) || entity.is_crouching(host).unwrap_or(false)

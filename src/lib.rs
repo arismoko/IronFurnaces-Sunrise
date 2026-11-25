@@ -110,6 +110,7 @@ impl Hooks for Mod {
     fn register(&self, r: &mut dyn Registrar, _cx: &RegistrationContext) {
         // `/<ns>` commands menu: the client's side of its channel.
         commands_menu::register_payload(r);
+        owners::register(r);
         // The generators' recipes, read with `recipes_of_type`: Sunrise refuses a recipe file whose serializer no mod
         // registered, so the type and its serializer (the files' `type`, the same id) are declared here.
         r.register_recipe_type("ironfurnaces:generator_blasting");
@@ -303,11 +304,14 @@ impl BlockPart for Furnace {
         (config::cfg(host, "misc.lightupdates") != 0).then_some(0)
     }
 
-    fn use_item_on(&self, host: &mut dyn ServerHost, event: &mut UseItemOnEvent<'_>) -> Option<InteractionResult> {
+    fn use_item_on(&self, host: HostSide<'_>, event: &mut UseItemOnEvent<'_>) -> Option<InteractionResult> {
+        // The server's answer; a client defers to the template's prediction.
+        let HostSide::Server(host) = host else { return None };
         interact::use_item_on(host, event.click)
     }
 
-    fn use_without_item(&self, host: &mut dyn ServerHost, event: &mut UseWithoutItemEvent<'_>) -> Option<InteractionResult> {
+    fn use_without_item(&self, host: HostSide<'_>, event: &mut UseWithoutItemEvent<'_>) -> Option<InteractionResult> {
+        let HostSide::Server(host) = host else { return None };
         interact::use_without_item(host, event.click)
     }
 
@@ -352,10 +356,6 @@ impl BlockEntityPart for Furnace {
         Some(Compound::new())
     }
 
-    fn block_entity_ticks(&self, _host: &dyn Host, event: &mut BlockEntityTicksEvent<'_>) {
-        event.ticks = true;
-    }
-
     fn block_entity_tick(&self, event: &mut BlockEntityTickEvent<'_>) {
         // (The entity's id is its type, `ironfurnaces:furnace`: the tier is the block's.)
         tick_on_fields(&mut event.subject, |host, pos, entity| {
@@ -373,7 +373,7 @@ impl BlockEntityPart for Furnace {
         // What the client's copy needs: the page and mode its screen lays out, the look.
         let mut tag = Compound::new();
         for key in ["hz_mode", "AugmentGUI", "Jovial"] {
-            if let Some(v) = event.entity.nbt.get(&java(key)) {
+            if let Some(v) = event.entity.nbt().get(&java(key)) {
                 tag.insert(java(key), v.clone());
             }
         }
@@ -401,7 +401,7 @@ impl BlockEntityPart for Furnace {
 
     fn pre_remove_side_effects(&self, _level: &mut dyn LevelRandomHost, event: &mut PreRemoveSideEffectsEvent<'_>) {
         let pos = [event.pos.x, event.pos.y, event.pos.z];
-        let xp = furnace::stored_experience(&event.entity.nbt);
+        let xp = furnace::stored_experience(event.entity.nbt());
         with_state(|s| {
             s.xp_on_break.insert(pos, xp);
             s.comparator.retain(|(_, p), _| *p != pos);
@@ -409,10 +409,6 @@ impl BlockEntityPart for Furnace {
     }
 
     /// A lit furnace's flames, smoke and sounds run on the client, for every loaded copy (`client::animate`).
-    fn block_entity_client_ticks(&self, _host: &dyn ClientHost, event: &mut BlockEntityClientTicksEvent<'_>) {
-        event.ticks = true;
-    }
-
     fn block_entity_client_tick(&self, event: &mut BlockEntityClientTickEvent<'_>) {
         let Some(pos) = event.subject.with_view(|view| view.position()) else { return };
         client::animate(event.subject.host(), pos);
@@ -421,7 +417,8 @@ impl BlockEntityPart for Furnace {
 
 #[mod_api::sunrise_part]
 impl BlockPart for Heater {
-    fn use_without_item(&self, host: &mut dyn ServerHost, event: &mut UseWithoutItemEvent<'_>) -> Option<InteractionResult> {
+    fn use_without_item(&self, host: HostSide<'_>, event: &mut UseWithoutItemEvent<'_>) -> Option<InteractionResult> {
+        let HostSide::Server(host) = host else { return None };
         interact::heater_use(host, event.click)
     }
 }
@@ -432,17 +429,13 @@ impl BlockEntityPart for Heater {
         Some(Compound::new())
     }
 
-    fn block_entity_ticks(&self, _host: &dyn Host, event: &mut BlockEntityTicksEvent<'_>) {
-        event.ticks = true;
-    }
-
     fn block_entity_tick(&self, event: &mut BlockEntityTickEvent<'_>) {
         tick_on_fields(&mut event.subject, |_, pos, entity| furnace::heater_tick(pos, entity));
     }
 
     fn pre_remove_side_effects(&self, _level: &mut dyn LevelRandomHost, event: &mut PreRemoveSideEffectsEvent<'_>) {
         let pos = [event.pos.x, event.pos.y, event.pos.z];
-        let energy = get_i(&event.entity.nbt, "energy", 0);
+        let energy = get_i(event.entity.nbt(), "energy", 0);
         with_state(|s| s.heater_on_break.insert(pos, energy));
     }
 }

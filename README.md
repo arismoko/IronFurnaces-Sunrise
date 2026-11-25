@@ -4,7 +4,7 @@ This is Iron Furnaces 4.4.2 (Qelifern, XenoMustache, Astryxion) as a native Sunr
 only: hooks and Parts, with no `[native.*]` rows. The Rust code is a rewrite, checked against the decompiled 4.4.2 jar.
 The textures, models, recipes, loot tables and language files are the original mod's.
 
-The build is pinned to Sunrise Dev 2026-11-24, commit `3d34bbe` (`sunrise-mod.toml`). The optional dependencies are:
+The build is pinned to Sunrise Dev 2026-11-25, commit `bdad86d` (`sunrise-mod.toml`). The optional dependencies are:
 
 - JEI (`^0.5`): the generator categories.
 - AE2 (`^15.4.13`): `ae2::api::register_machine`, for its crafting ETA.
