@@ -11,11 +11,10 @@
 //! - the screens are drawn and clicked on the client (`screen`); the server acts on the button ids (`menu_button`)
 //!   and checks every slot through the menu (shown slots, slot rules, quick moves).
 
-mod commands_menu;
 mod ae2_eta;
-mod work;
 mod caps;
 mod client;
+mod commands_menu;
 mod config;
 mod furnace;
 mod interact;
@@ -26,6 +25,7 @@ mod recipes;
 mod screen;
 mod tooltip;
 mod util;
+mod work;
 
 use crate::furnace::{FURNACES, is_furnace, is_heater, is_rainbow};
 use crate::util::*;
@@ -95,9 +95,22 @@ pub(crate) struct HeaterItem;
 pub(crate) struct Menus;
 
 const UPGRADES: [&str; 16] = [
-    "upgrade_iron", "upgrade_gold", "upgrade_diamond", "upgrade_emerald", "upgrade_obsidian", "upgrade_crystal",
-    "upgrade_obsidian2", "upgrade_netherite", "upgrade_copper", "upgrade_silver", "upgrade_silver2", "upgrade_iron2",
-    "upgrade_gold2", "upgrade_allthemodium", "upgrade_vibranium", "upgrade_unobtainium",
+    "upgrade_iron",
+    "upgrade_gold",
+    "upgrade_diamond",
+    "upgrade_emerald",
+    "upgrade_obsidian",
+    "upgrade_crystal",
+    "upgrade_obsidian2",
+    "upgrade_netherite",
+    "upgrade_copper",
+    "upgrade_silver",
+    "upgrade_silver2",
+    "upgrade_iron2",
+    "upgrade_gold2",
+    "upgrade_allthemodium",
+    "upgrade_vibranium",
+    "upgrade_unobtainium",
 ];
 
 #[mod_api::sunrise_mod]
@@ -114,11 +127,19 @@ impl Hooks for Mod {
         // The generators' recipes, read with `recipes_of_type`: Sunrise refuses a recipe file whose serializer no mod
         // registered, so the type and its serializer (the files' `type`, the same id) are declared here.
         r.register_recipe_type("ironfurnaces:generator_blasting");
-        r.register_raw_recipe_serializer("ironfurnaces:generator_blasting", "ironfurnaces:generator_blasting");
+        r.register_raw_recipe_serializer(
+            "ironfurnaces:generator_blasting",
+            "ironfurnaces:generator_blasting",
+        );
         let furnaces = r.block_entity_type("furnace").blocks(&FURNACES).build();
-        r.block_entity_part(&furnaces, Furnace).expect("ironfurnaces:furnace is a native block entity type");
-        let heater = r.block_entity_type("heater").blocks(&["ironfurnaces:heater"]).build();
-        r.block_entity_part(&heater, Heater).expect("ironfurnaces:heater is a native block entity type");
+        r.block_entity_part(&furnaces, Furnace)
+            .expect("ironfurnaces:furnace is a native block entity type");
+        let heater = r
+            .block_entity_type("heater")
+            .blocks(&["ironfurnaces:heater"])
+            .build();
+        r.block_entity_part(&heater, Heater)
+            .expect("ironfurnaces:heater is a native block entity type");
         r.block_entity_capability_before_game(&ITEMS, &furnaces, |_, at, _, _, offer| {
             offer.offer(|| Box::new(caps::FurnaceItems(at)))
         });
@@ -129,9 +150,15 @@ impl Hooks for Mod {
         // (AE2's crafting ETA, Jade, recipe viewers read it), `work.rs`.
         #[cfg(feature = "machine_work")]
         if _cx.mods().get("machine_work").is_some() {
-            r.block_entity_capability(&machine_work::MACHINE_WORK, &furnaces, |_, at, _, _, offer| {
-                offer.offer(|| Box::new(work::FurnaceWork(at)) as Box<dyn machine_work::MachineWork>)
-            });
+            r.block_entity_capability(
+                &machine_work::MACHINE_WORK,
+                &furnaces,
+                |_, at, _, _, offer| {
+                    offer.offer(|| {
+                        Box::new(work::FurnaceWork(at)) as Box<dyn machine_work::MachineWork>
+                    })
+                },
+            );
         }
         r.menu_part("ironfurnaces:furnace", Menus);
         r.menu_part("ironfurnaces:heater", Menus);
@@ -210,7 +237,6 @@ impl Hooks for Mod {
         );
     }
 
-
     /// With AE2 installed: the furnaces' craft times for its crafting jobs' time left (`ae2_eta`).
     fn server_starting(&self, host: &mut dyn ServerHost, _event: &mut ServerStartingEvent) {
         mod_api::if_installed!(host, ae2, {
@@ -223,9 +249,13 @@ impl Hooks for Mod {
     }
 
     fn entity_place(&self, host: &mut dyn ServerHost, event: &mut EntityPlaceEvent) -> Flow {
-        let Some(placer) = event.placer.and_then(|e| e.uuid(host)) else { return Flow::Continue };
+        let Some(placer) = event.placer.and_then(|e| e.uuid(host)) else {
+            return Flow::Continue;
+        };
         let pos = [event.pos.x, event.pos.y, event.pos.z];
-        let Some(block) = host.block_state_string(event.state) else { return Flow::Continue };
+        let Some(block) = host.block_state_string(event.state) else {
+            return Flow::Continue;
+        };
         let block = block.split('[').next().unwrap_or("").to_owned();
         if is_furnace(&block) {
             let dimension = host.dimension().to_owned();
@@ -247,15 +277,21 @@ impl Hooks for Mod {
 
     fn block_drops(&self, level: &dyn LevelHost, event: &mut BlockDropsEvent<'_>) -> Flow {
         let pos = [event.pos.x, event.pos.y, event.pos.z];
-        let Some(block) = level.state_block(event.state).map(str::to_owned) else { return Flow::Continue };
-        let Some(keys) = KEYS.get() else { return Flow::Continue };
+        let Some(block) = level.state_block(event.state).map(str::to_owned) else {
+            return Flow::Continue;
+        };
+        let Some(keys) = KEYS.get() else {
+            return Flow::Continue;
+        };
         if is_furnace(&block) {
             // onBlockStateChange: grantStoredRecipeExperience where it stood.
             let xp = with_state(|s| s.xp_on_break.remove(&pos)).unwrap_or(0);
             event.experience += xp;
             if is_rainbow(&block) && with_state(|s| s.exploded.remove(&pos)) {
                 // onExplosionHit: the block itself is gone, not dropped.
-                event.drops.retain(|d| d.stack().is_none_or(|s| s.item() != keys.million));
+                event
+                    .drops
+                    .retain(|d| d.stack().is_none_or(|s| s.item() != keys.million));
             }
         } else if is_heater(&block) {
             let energy = with_state(|s| s.heater_on_break.remove(&pos)).unwrap_or(0);
@@ -269,7 +305,9 @@ impl Hooks for Mod {
                     set_i(&mut c, "Energy", energy);
                     set_custom_data(&mut stack, c);
                 }
-                let _ = event.drops.push(ItemDrop::new(stack, centre(pos), [0.0; 3], 10));
+                let _ = event
+                    .drops
+                    .push(ItemDrop::new(stack, centre(pos), [0.0; 3], 10));
             }
         }
         Flow::Continue
@@ -277,7 +315,9 @@ impl Hooks for Mod {
 
     fn item_tooltip(&self, host: &dyn ClientHost, event: &mut ItemTooltipEvent<'_>) {
         // The stack and lines are lent as views: the lines are appended after the borrowed list.
-        let Some(stack) = event.stack.project() else { return };
+        let Some(stack) = event.stack.project() else {
+            return;
+        };
         let mut added = Vec::new();
         tooltip::tooltip(host, &stack, &mut added);
         for (text, color) in added {
@@ -285,7 +325,11 @@ impl Hooks for Mod {
         }
     }
 
-    fn client_player_logging_in(&self, host: &mut dyn ClientHost, _event: &mut ClientPlayerLoggingInEvent) {
+    fn client_player_logging_in(
+        &self,
+        host: &mut dyn ClientHost,
+        _event: &mut ClientPlayerLoggingInEvent,
+    ) {
         mod_api::if_installed!(host, jei, {
             crate::jei::register(&*host);
         });
@@ -304,18 +348,34 @@ impl BlockPart for Furnace {
         (config::cfg(host, "misc.lightupdates") != 0).then_some(0)
     }
 
-    fn use_item_on(&self, host: HostSide<'_>, event: &mut UseItemOnEvent<'_>) -> Option<InteractionResult> {
+    fn use_item_on(
+        &self,
+        host: HostSide<'_>,
+        event: &mut UseItemOnEvent<'_>,
+    ) -> Option<InteractionResult> {
         // The server's answer; a client defers to the template's prediction.
-        let HostSide::Server(host) = host else { return None };
+        let HostSide::Server(host) = host else {
+            return None;
+        };
         interact::use_item_on(host, event.click)
     }
 
-    fn use_without_item(&self, host: HostSide<'_>, event: &mut UseWithoutItemEvent<'_>) -> Option<InteractionResult> {
-        let HostSide::Server(host) = host else { return None };
+    fn use_without_item(
+        &self,
+        host: HostSide<'_>,
+        event: &mut UseWithoutItemEvent<'_>,
+    ) -> Option<InteractionResult> {
+        let HostSide::Server(host) = host else {
+            return None;
+        };
         interact::use_without_item(host, event.click)
     }
 
-    fn state_for_placement(&self, level: LevelSide, event: &mut StateForPlacementEvent<'_>) -> Option<Option<BlockState>> {
+    fn state_for_placement(
+        &self,
+        level: LevelSide,
+        event: &mut StateForPlacementEvent<'_>,
+    ) -> Option<Option<BlockState>> {
         // getStateForPlacement: facing the player. Both sides answer it alike (a state change, no world read).
         let (LevelSide::Server(level) | LevelSide::Client(level)) = level;
         let facing = match event.context.source {
@@ -324,7 +384,9 @@ impl BlockPart for Furnace {
             PlacementSource::Directional { direction } => interact::facing_for_direction(direction),
             _ => return None,
         };
-        level.state_with_property(event.state, "facing", facing).map(Some)
+        level
+            .state_with_property(event.state, "facing", facing)
+            .map(Some)
     }
 
     fn has_analog_output(&self, _level: &dyn LevelHost, event: &mut HasAnalogOutputEvent) {
@@ -332,35 +394,56 @@ impl BlockPart for Furnace {
     }
 
     fn analog_output(&self, _level: &mut dyn LevelRandomHost, event: &mut AnalogOutputEvent) {
-        let key = (event.dimension.key().id().to_owned(), [event.pos.x, event.pos.y, event.pos.z]);
+        let key = (
+            event.dimension.key().id().to_owned(),
+            [event.pos.x, event.pos.y, event.pos.z],
+        );
         event.output = with_state(|s| s.comparator.get(&key).copied()).unwrap_or(0);
     }
 
     fn on_block_exploded(&self, host: &mut dyn ServerHost, event: &mut OnBlockExplodedEvent<'_>) {
         let pos = [event.pos.x, event.pos.y, event.pos.z];
-        let Some(level) = host.level(host.dimension()) else { return };
-        if !level.block(host, pos).is_some_and(|b| b.id(host).is_some_and(is_rainbow)) {
+        let Some(level) = host.level(host.dimension()) else {
+            return;
+        };
+        if !level
+            .block(host, pos)
+            .is_some_and(|b| b.id(host).is_some_and(is_rainbow))
+        {
             return;
         }
         // BlockMillionFurnace.onExplosionHit: a Rainbow Coal two blocks up, the furnace gone.
         with_state(|s| s.exploded.insert(pos));
         if let Some(coal) = KEYS.get().and_then(|k| ItemStack::new(k.rainbow_coal, 1)) {
-            let _ = level.spawn_item(host, f64::from(pos[0]), f64::from(pos[1]) + 2.0, f64::from(pos[2]), coal, 10);
+            let _ = level.spawn_item(
+                host,
+                f64::from(pos[0]),
+                f64::from(pos[1]) + 2.0,
+                f64::from(pos[2]),
+                coal,
+                10,
+            );
         }
     }
 }
 
 #[mod_api::sunrise_part]
 impl BlockEntityPart for Furnace {
-    fn block_entity(&self, _level: LevelSide, _event: &mut BlockEntityEvent<'_>) -> Option<Compound> {
+    fn block_entity(
+        &self,
+        _level: LevelSide,
+        _event: &mut BlockEntityEvent<'_>,
+    ) -> Option<Compound> {
         Some(Compound::new())
     }
 
     fn block_entity_tick(&self, event: &mut BlockEntityTickEvent<'_>) {
         // (The entity's id is its type, `ironfurnaces:furnace`: the tier is the block's.)
         tick_on_fields(&mut event.subject, |host, pos, entity| {
-            let Some(block) =
-                host.level(host.dimension()).and_then(|l| l.block(host, pos)).and_then(|b| b.id(host).map(str::to_owned))
+            let Some(block) = host
+                .level(host.dimension())
+                .and_then(|l| l.block(host, pos))
+                .and_then(|b| b.id(host).map(str::to_owned))
             else {
                 return;
             };
@@ -369,7 +452,10 @@ impl BlockEntityPart for Furnace {
         });
     }
 
-    fn block_entity_update_tag(&self, event: &mut BlockEntityUpdateTagEvent<'_>) -> Option<Compound> {
+    fn block_entity_update_tag(
+        &self,
+        event: &mut BlockEntityUpdateTagEvent<'_>,
+    ) -> Option<Compound> {
         // What the client's copy needs: the page and mode its screen lays out, the look.
         let mut tag = Compound::new();
         for key in ["hz_mode", "AugmentGUI", "Jovial"] {
@@ -384,22 +470,59 @@ impl BlockEntityPart for Furnace {
         // quickMoveStack from the player's inventory (`quickmove`); from the furnace's slots, the game's routing (into
         // the inventory, the results from its end) is the Java menu's.
         // The resident entity is lent through views: its fields are copied out, moved on, and what changed written back.
-        let Some((handle, pos, before)) = event.subject.with_view(|view| (view.handle(), view.position(), fields_of(&view))) else {
+        let Some((handle, pos, before)) = event
+            .subject
+            .with_view(|view| (view.handle(), view.position(), fields_of(&view)))
+        else {
             return Flow::Continue;
         };
         let host = event.subject.host();
-        let Some(player) = host.players().acting_player().and_then(|p| p.entity().uuid(host)) else { return Flow::Continue };
-        let Some(level) = host.level(host.dimension()) else { return Flow::Continue };
-        let Some(block) = level.block(host, pos).and_then(|b| b.id(host).map(str::to_owned)) else { return Flow::Continue };
+        let Some(player) = host
+            .players()
+            .acting_player()
+            .and_then(|p| p.entity().uuid(host))
+        else {
+            return Flow::Continue;
+        };
+        let Some(level) = host.level(host.dimension()) else {
+            return Flow::Continue;
+        };
+        let Some(block) = level
+            .block(host, pos)
+            .and_then(|b| b.id(host).map(str::to_owned))
+        else {
+            return Flow::Continue;
+        };
         let mut entity = before.clone();
-        let handled = quickmove::run(host, player, level, &block, &mut entity, event.slot, event.stack);
-        if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
+        let handled = quickmove::run(
+            host,
+            player,
+            level,
+            &block,
+            &mut entity,
+            event.slot,
+            event.stack,
+        );
+        if entity != before
+            && event
+                .subject
+                .with_view(|mut view| write_fields(&mut view, &before, &entity))
+                == Some(true)
+        {
             let _ = handle.set_changed(event.subject.host());
         }
-        if handled { Flow::Cancel } else { Flow::Continue }
+        if handled {
+            Flow::Cancel
+        } else {
+            Flow::Continue
+        }
     }
 
-    fn pre_remove_side_effects(&self, _level: &mut dyn LevelRandomHost, event: &mut PreRemoveSideEffectsEvent<'_>) {
+    fn pre_remove_side_effects(
+        &self,
+        _level: &mut dyn LevelRandomHost,
+        event: &mut PreRemoveSideEffectsEvent<'_>,
+    ) {
         let pos = [event.pos.x, event.pos.y, event.pos.z];
         let xp = furnace::stored_experience(event.entity.nbt());
         with_state(|s| {
@@ -410,30 +533,48 @@ impl BlockEntityPart for Furnace {
 
     /// A lit furnace's flames, smoke and sounds run on the client, for every loaded copy (`client::animate`).
     fn block_entity_client_tick(&self, event: &mut BlockEntityClientTickEvent<'_>) {
-        let Some(pos) = event.subject.with_view(|view| view.position()) else { return };
+        let Some(pos) = event.subject.with_view(|view| view.position()) else {
+            return;
+        };
         client::animate(event.subject.host(), pos);
     }
 }
 
 #[mod_api::sunrise_part]
 impl BlockPart for Heater {
-    fn use_without_item(&self, host: HostSide<'_>, event: &mut UseWithoutItemEvent<'_>) -> Option<InteractionResult> {
-        let HostSide::Server(host) = host else { return None };
+    fn use_without_item(
+        &self,
+        host: HostSide<'_>,
+        event: &mut UseWithoutItemEvent<'_>,
+    ) -> Option<InteractionResult> {
+        let HostSide::Server(host) = host else {
+            return None;
+        };
         interact::heater_use(host, event.click)
     }
 }
 
 #[mod_api::sunrise_part]
 impl BlockEntityPart for Heater {
-    fn block_entity(&self, _level: LevelSide, _event: &mut BlockEntityEvent<'_>) -> Option<Compound> {
+    fn block_entity(
+        &self,
+        _level: LevelSide,
+        _event: &mut BlockEntityEvent<'_>,
+    ) -> Option<Compound> {
         Some(Compound::new())
     }
 
     fn block_entity_tick(&self, event: &mut BlockEntityTickEvent<'_>) {
-        tick_on_fields(&mut event.subject, |_, pos, entity| furnace::heater_tick(pos, entity));
+        tick_on_fields(&mut event.subject, |_, pos, entity| {
+            furnace::heater_tick(pos, entity)
+        });
     }
 
-    fn pre_remove_side_effects(&self, _level: &mut dyn LevelRandomHost, event: &mut PreRemoveSideEffectsEvent<'_>) {
+    fn pre_remove_side_effects(
+        &self,
+        _level: &mut dyn LevelRandomHost,
+        event: &mut PreRemoveSideEffectsEvent<'_>,
+    ) {
         let pos = [event.pos.x, event.pos.y, event.pos.z];
         let energy = get_i(event.entity.nbt(), "energy", 0);
         with_state(|s| s.heater_on_break.insert(pos, energy));
@@ -444,15 +585,20 @@ impl BlockEntityPart for Heater {
 impl ItemPart for Tool {
     fn use_on(&self, host: HostSide, event: &mut UseOnEvent<'_>) -> Option<InteractionResult> {
         // Server-side as before: a claimed use swings the hand and neither the item's `useOn` nor its `use` runs.
-        let HostSide::Server(host) = host else { return None };
-        matches!(interact::item_use_on(host, event), Flow::Cancel).then_some(InteractionResult::SuccessServer)
+        let HostSide::Server(host) = host else {
+            return None;
+        };
+        matches!(interact::item_use_on(host, event), Flow::Cancel)
+            .then_some(InteractionResult::SuccessServer)
     }
 }
 
 #[mod_api::sunrise_part]
 impl ItemPart for HeaterItem {
     fn use_on(&self, host: HostSide, event: &mut UseOnEvent<'_>) -> Option<InteractionResult> {
-        let HostSide::Server(_) = host else { return None };
+        let HostSide::Server(_) = host else {
+            return None;
+        };
         // The energy it holds goes to the transmitter it places (`entity_place`).
         let energy = tooltip::heater_energy(event.stack).unwrap_or(0);
         let player = event.player;
@@ -463,7 +609,10 @@ impl ItemPart for HeaterItem {
     fn item_bar(&self, _host: &dyn ClientHost, event: &mut ItemBarEvent<'_>) {
         // BlockItemHeater: isBarVisible with energy, 13 pixels for a full store, getBarColor -8387072.
         if let Some(energy) = tooltip::heater_energy(event.stack) {
-            *event.bar = Some(((13.0 * (f64::from(energy) / 1_000_000.0)) as i32, (-8_387_072i32) as u32));
+            *event.bar = Some((
+                (13.0 * (f64::from(energy) / 1_000_000.0)) as i32,
+                (-8_387_072i32) as u32,
+            ));
         }
     }
 }
@@ -473,19 +622,39 @@ impl MenuPart for Menus {
     /// Every id of a block's menu reaches `menu_button`, which checks its own ids, as every `clickMenuButton` reached
     /// the Java menu. Main drops a button id its menu's owner doesn't accept.
     fn menu_button_valid(&self, _host: &dyn Host, event: &mut MenuButtonValidEvent<'_>) -> Flow {
-        if event.block.is_some() { Flow::Cancel } else { Flow::Continue }
+        if event.block.is_some() {
+            Flow::Cancel
+        } else {
+            Flow::Continue
+        }
     }
 
     fn menu_button(&self, event: &mut MenuButtonEvent<'_>) {
         let Some(pos) = event.context.pos else { return };
-        let Some((handle, before)) = event.subject.with_view(|view| (view.handle(), fields_of(&view))) else { return };
+        let Some((handle, before)) = event
+            .subject
+            .with_view(|view| (view.handle(), fields_of(&view)))
+        else {
+            return;
+        };
         let mut entity = before.clone();
-        screen::menu_button(event.subject.host(), event.context.player, pos, event.context.id, &mut entity.nbt);
+        screen::menu_button(
+            event.subject.host(),
+            event.context.player,
+            pos,
+            event.context.id,
+            &mut entity.nbt,
+        );
         // The page shows from this click on, as the menu's live ContainerData does, not from the next tick.
         if let Some(page) = entity.data.get_mut(furnace::D_AUGMENT_GUI) {
             *page = util::get_i(&entity.nbt, "AugmentGUI", 0);
         }
-        if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
+        if entity != before
+            && event
+                .subject
+                .with_view(|mut view| write_fields(&mut view, &before, &entity))
+                == Some(true)
+        {
             let _ = handle.set_changed(event.subject.host());
         }
     }
@@ -493,17 +662,31 @@ impl MenuPart for Menus {
     /// SlotIronFurnace.onTake: whoever takes a result gets the furnace's stored experience, as orbs where they stand, and
     /// its recipes (unlockRecipes).
     fn menu_slot_take(&self, event: &mut MenuSlotTakeEvent<'_>) {
-        if event.menu != "ironfurnaces:furnace" || !(event.slot == furnace::OUTPUT || (13..=18).contains(&event.slot)) {
+        if event.menu != "ironfurnaces:furnace"
+            || !(event.slot == furnace::OUTPUT || (13..=18).contains(&event.slot))
+        {
             return;
         }
-        let Some((handle, before)) = event.subject.with_view(|view| (view.handle(), fields_of(&view))) else { return };
+        let Some((handle, before)) = event
+            .subject
+            .with_view(|view| (view.handle(), fields_of(&view)))
+        else {
+            return;
+        };
         let mut entity = before.clone();
         let (ids, amount) = furnace::take_experience(&mut entity.nbt);
-        if entity != before && event.subject.with_view(|mut view| write_fields(&mut view, &before, &entity)) == Some(true) {
+        if entity != before
+            && event
+                .subject
+                .with_view(|mut view| write_fields(&mut view, &before, &entity))
+                == Some(true)
+        {
             let _ = handle.set_changed(event.subject.host());
         }
         let host = event.subject.host();
-        let Some(player) = host.player(event.player) else { return };
+        let Some(player) = host.player(event.player) else {
+            return;
+        };
         furnace::award(host, player, &ids, amount);
     }
 
@@ -521,18 +704,29 @@ impl MenuPart for Menus {
         if event.menu != "ironfurnaces:furnace" {
             return;
         }
-        let augment = keys.augments.iter().find(|(k, _)| *k == item).map(|(_, slot)| *slot);
+        let augment = keys
+            .augments
+            .iter()
+            .find(|(k, _)| *k == item)
+            .map(|(_, slot)| *slot);
         // The red augment in the menu (the furnace's recipe type, the generator's fuel), as the Java slots read the
         // block entity's slot 3.
-        let red = event.context.slot(MenuContainer::Main, furnace::AUGMENT_RED).map(|s| s.item());
+        let red = event
+            .context
+            .slot(MenuContainer::Main, furnace::AUGMENT_RED)
+            .map(|s| s.item());
         let red = recipes::red_augment(red, keys.augments[0].0, keys.augments[1].0);
         // What an item is, worked out when the data packs loaded; until then nothing is held back.
         let sets = recipes::sets();
-        let is = |set: fn(&recipes::ItemSets) -> &std::collections::HashSet<ItemKey>| sets.as_ref().is_none_or(|s| set(s).contains(&item));
+        let is = |set: fn(&recipes::ItemSets) -> &std::collections::HashSet<ItemKey>| {
+            sets.as_ref().is_none_or(|s| set(s).contains(&item))
+        };
         match event.slot {
             // SlotIronFurnaceInput and SlotIronFurnaceInputFactory: hasRecipe, of the furnace's own type.
             furnace::INPUT | 7..=12 => {
-                event.may_place = sets.as_ref().is_none_or(|s| s.cookable[red.kind().index()].contains(&item));
+                event.may_place = sets
+                    .as_ref()
+                    .is_none_or(|s| s.cookable[red.kind().index()].contains(&item));
             }
             // SlotIronFurnaceFuel: a fuel (a receiver too), or a bucket, one at a time.
             furnace::FUEL => {

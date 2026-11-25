@@ -15,7 +15,12 @@ use mod_api::*;
 /// A craft's time on the furnace: (ticks a craft on average, ticks until a craft's last smelt is out, ticks done on the
 /// work under way). `cook`: ticks a smelt; `parallel`: smelts at once; `items`: smelts a craft (the pattern's cookable
 /// inputs); `done`: the cook timer now (0 idle).
-pub(crate) fn per_craft(cook: i32, parallel: u32, items: i64, done: i32) -> (f64, f64, Option<f64>) {
+pub(crate) fn per_craft(
+    cook: i32,
+    parallel: u32,
+    items: i64,
+    done: i32,
+) -> (f64, f64, Option<f64>) {
     let cook = f64::from(cook.max(1));
     let parallel = parallel.max(1) as f64;
     let items = items.max(1) as f64;
@@ -28,21 +33,36 @@ pub(crate) fn per_craft(cook: i32, parallel: u32, items: i64, done: i32) -> (f64
 /// doesn't for a furnace with a mult, `canAutoSplitWork`).
 pub(crate) fn parallel(mode: i32, mult: i32, rows: usize, split: bool) -> u32 {
     let mult = mult.clamp(1, 64) as u32;
-    if mode == 1 && split && mult == 1 { rows.max(1) as u32 } else { mult }
+    if mode == 1 && split && mult == 1 {
+        rows.max(1) as u32
+    } else {
+        mult
+    }
 }
 
 /// The furnace `block` at `pos` as its craft times read it: its fields (saved compound and slots) and its mode (0
 /// furnace, 1 factory). None for no furnace, a generator, or a furnace switched off by redstone. Shared with the
 /// `machine_work` capability's answer (`work.rs`).
 #[cfg_attr(not(any(feature = "ae2", feature = "machine_work")), allow(dead_code))]
-pub(crate) fn working_furnace(host: &dyn Host, level: LevelRef, pos: Pos, block: &str) -> Option<(Fields, i32)> {
+pub(crate) fn working_furnace(
+    host: &dyn Host,
+    level: LevelRef,
+    pos: Pos,
+    block: &str,
+) -> Option<(Fields, i32)> {
     if !furnace::is_furnace(block) {
         return None;
     }
     let entity = host.block_entity(level, pos)?;
     let nbt = entity.data(host)?;
-    let items = (0..SLOTS as u32).map(|i| entity.item_slot(host, i).ok().flatten()).collect();
-    let e = Fields { nbt, items, data: Vec::new() };
+    let items = (0..SLOTS as u32)
+        .map(|i| entity.item_slot(host, i).ok().flatten())
+        .collect();
+    let e = Fields {
+        nbt,
+        items,
+        data: Vec::new(),
+    };
     let mode = furnace::mode(host, &e);
     if mode == 2 {
         return None;
@@ -59,7 +79,11 @@ pub(crate) fn working_furnace(host: &dyn Host, level: LevelRef, pos: Pos, block:
 /// Auto Split.
 #[cfg_attr(not(any(feature = "ae2", feature = "machine_work")), allow(dead_code))]
 pub(crate) fn parallel_of(host: &dyn Host, block: &str, e: &Fields, mode: i32) -> u32 {
-    let rows = if mode == 1 { furnace::factory_range(config::tier(host, block)).len() } else { 1 };
+    let rows = if mode == 1 {
+        furnace::factory_range(config::tier(host, block)).len()
+    } else {
+        1
+    };
     let split = get_i(&e.nbt, "AutoSplit", 0) != 0;
     parallel(mode, config::smelt_mult(host, block), rows, split)
 }
@@ -67,13 +91,21 @@ pub(crate) fn parallel_of(host: &dyn Host, block: &str, e: &Fields, mode: i32) -
 /// What the furnace at `pos` takes for one craft of `inputs` (item ids, and the amount a craft takes), as
 /// `ae2::api::MachineProvider` asks: (ticks, latency, done).
 #[cfg_attr(not(feature = "ae2"), allow(dead_code))]
-pub(crate) fn furnace_time(host: &dyn Host, level: LevelRef, pos: Pos, block: &str, inputs: &[(&str, i64)]) -> Option<(f64, f64, Option<f64>)> {
+pub(crate) fn furnace_time(
+    host: &dyn Host,
+    level: LevelRef,
+    pos: Pos,
+    block: &str,
+    inputs: &[(&str, i64)],
+) -> Option<(f64, f64, Option<f64>)> {
     let (e, mode) = working_furnace(host, level, pos, block)?;
     // The inputs the furnace cooks (with its red augment's recipe type), and the smelt time of the first.
     let mut cook = 0;
     let mut smelts = 0i64;
     for (id, n) in inputs {
-        let Some(stack) = stack_of(host, id, 1) else { continue };
+        let Some(stack) = stack_of(host, id, 1) else {
+            continue;
+        };
         let t = furnace::cook_time_of(host, level, block, &e, &stack);
         if t > 0 {
             if cook == 0 {
@@ -88,17 +120,38 @@ pub(crate) fn furnace_time(host: &dyn Host, level: LevelRef, pos: Pos, block: &s
     let range = furnace::factory_range(config::tier(host, block));
     let done = if mode == 1 {
         let timers = int_array(&e.nbt, "FactoryCookTime", 6);
-        range.clone().filter_map(|j| timers.get(j).copied()).max().unwrap_or(0)
+        range
+            .clone()
+            .filter_map(|j| timers.get(j).copied())
+            .max()
+            .unwrap_or(0)
     } else {
         get_i(&e.nbt, "CookTime", 0)
     };
-    Some(per_craft(cook, parallel_of(host, block, &e, mode), smelts, done))
+    Some(per_craft(
+        cook,
+        parallel_of(host, block, &e, mode),
+        smelts,
+        done,
+    ))
 }
 
 /// `ae2::api::register_machine`'s provider.
 #[cfg(feature = "ae2")]
-pub(crate) fn machine_time(host: &dyn Host, level: LevelRef, pos: [i32; 3], block: &str, inputs: &[(&str, i64)]) -> Option<ae2::api::MachineTime> {
-    furnace_time(host, level, pos, block, inputs).map(|(ticks, latency, done)| ae2::api::MachineTime { ticks, latency, done })
+pub(crate) fn machine_time(
+    host: &dyn Host,
+    level: LevelRef,
+    pos: [i32; 3],
+    block: &str,
+    inputs: &[(&str, i64)],
+) -> Option<ae2::api::MachineTime> {
+    furnace_time(host, level, pos, block, inputs).map(|(ticks, latency, done)| {
+        ae2::api::MachineTime {
+            ticks,
+            latency,
+            done,
+        }
+    })
 }
 
 #[cfg(test)]

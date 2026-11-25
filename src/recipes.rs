@@ -144,7 +144,10 @@ pub(crate) fn ensure_sets(host: &dyn Host) {
 fn lookup(host: &dyn Host, level: LevelRef, kind: Kind, stack: &ItemStack) -> Option<Cooked> {
     let id = Identifier::parse(kind.id()).ok()?;
     let one = with_count(stack, 1)?;
-    let found = level.recipe_for(host, &id, &RecipeInput::Single(one)).ok().flatten()?;
+    let found = level
+        .recipe_for(host, &id, &RecipeInput::Single(one))
+        .ok()
+        .flatten()?;
     Some(Cooked {
         id: found.recipe.to_string(),
         result: found.output,
@@ -162,17 +165,31 @@ fn lookup(host: &dyn Host, level: LevelRef, kind: Kind, stack: &ItemStack) -> Op
 }
 
 /// The `kind` recipe for `stack`, if any.
-pub(crate) fn cook(host: &dyn Host, level: LevelRef, kind: Kind, stack: &ItemStack) -> Option<Cooked> {
+pub(crate) fn cook(
+    host: &dyn Host,
+    level: LevelRef,
+    kind: Kind,
+    stack: &ItemStack,
+) -> Option<Cooked> {
     if stack.components().is_some() {
         // A stack with its own components may match differently: asked every time.
         return lookup(host, level, kind, stack);
     }
     let key = (kind, stack.item());
-    if let Some(found) = COOKED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).get(&key) {
+    if let Some(found) = COOKED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .get(&key)
+    {
         return found.clone();
     }
     let found = lookup(host, level, kind, stack);
-    COOKED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).insert(key, found.clone());
+    COOKED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(key, found.clone());
     found
 }
 
@@ -182,9 +199,16 @@ fn generator_recipes(host: &dyn Host) -> Vec<(Ingredient, i32)> {
         return list.clone();
     }
     let mut list = Vec::new();
-    for r in host.recipes_of_type("ironfurnaces:generator_blasting").iter() {
-        let Some(ingredient) = r.json.get("ingredient") else { continue };
-        let Ok(Some(ingredient)) = host.recipe_ingredient(&ingredient.to_string()) else { continue };
+    for r in host
+        .recipes_of_type("ironfurnaces:generator_blasting")
+        .iter()
+    {
+        let Some(ingredient) = r.json.get("ingredient") else {
+            continue;
+        };
+        let Ok(Some(ingredient)) = host.recipe_ingredient(&ingredient.to_string()) else {
+            continue;
+        };
         let energy = r.json.get("energy").and_then(|e| e.as_i64()).unwrap_or(0) as i32;
         list.push((ingredient, energy));
     }
@@ -198,12 +222,17 @@ fn generator_recipes(host: &dyn Host) -> Vec<(Ingredient, i32)> {
 /// `ironfurnaces:generator_blasting`'s energy for a stack (GeneratorRecipe.getEnergy).
 pub(crate) fn generator_energy(host: &dyn Host, stack: &ItemStack) -> Option<i32> {
     let id = id_of(host, stack);
-    generator_recipes(host).into_iter().find_map(|(ingredient, energy)| ingredient.items.contains(&id).then_some(energy))
+    generator_recipes(host)
+        .into_iter()
+        .find_map(|(ingredient, energy)| ingredient.items.contains(&id).then_some(energy))
 }
 
 /// Every generator recipe: the items it takes, and its energy (the JEI-style tab and the guide).
 pub(crate) fn generator_all(host: &dyn Host) -> Vec<(Vec<String>, i32)> {
-    generator_recipes(host).into_iter().map(|(i, e)| (i.order.clone(), e)).collect()
+    generator_recipes(host)
+        .into_iter()
+        .map(|(i, e)| (i.order.clone(), e))
+        .collect()
 }
 
 #[cfg(test)]

@@ -84,7 +84,9 @@ fn read(host: &dyn Host) -> String {
 pub(crate) fn parse(text: &str) -> HashMap<String, i32> {
     let mut out = HashMap::new();
     for line in text.lines() {
-        let Some((k, v)) = line.split_once('=') else { continue };
+        let Some((k, v)) = line.split_once('=') else {
+            continue;
+        };
         let v = v.trim();
         let n = match v {
             "true" => 1,
@@ -106,7 +108,11 @@ pub(crate) fn cfg(host: &dyn Host, key: &str) -> i32 {
 /// A furnace block's config name (the Rainbow Furnace's block is `million_furnace`).
 pub(crate) fn name_of(block: &str) -> &str {
     let name = block.strip_prefix("ironfurnaces:").unwrap_or(block);
-    if name == "million_furnace" { "rainbow_furnace" } else { name }
+    if name == "million_furnace" {
+        "rainbow_furnace"
+    } else {
+        name
+    }
 }
 
 pub(crate) fn speed(host: &dyn Host, block: &str) -> i32 {
@@ -134,7 +140,9 @@ pub(crate) fn capacity(host: &dyn Host, block: &str) -> i32 {
 pub(crate) fn smelt_mult(host: &dyn Host, block: &str) -> i32 {
     match block {
         "ironfurnaces:million_furnace" => 64,
-        "ironfurnaces:allthemodium_furnace" | "ironfurnaces:vibranium_furnace" | "ironfurnaces:unobtainium_furnace" => {
+        "ironfurnaces:allthemodium_furnace"
+        | "ironfurnaces:vibranium_furnace"
+        | "ironfurnaces:unobtainium_furnace" => {
             cfg(host, &format!("{}.mult", name_of(block))).clamp(1, 64)
         }
         _ => 1,

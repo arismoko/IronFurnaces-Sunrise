@@ -50,7 +50,9 @@ pub(crate) fn wide(data: &[i32], lo: usize, hi: usize) -> i32 {
 }
 
 pub(crate) fn is_furnace(block: &str) -> bool {
-    block.strip_prefix("ironfurnaces:").is_some_and(|n| n.ends_with("_furnace"))
+    block
+        .strip_prefix("ironfurnaces:")
+        .is_some_and(|n| n.ends_with("_furnace"))
 }
 
 pub(crate) fn is_heater(block: &str) -> bool {
@@ -62,10 +64,19 @@ pub(crate) fn is_rainbow(block: &str) -> bool {
 }
 
 pub(crate) const FURNACES: [&str; 13] = [
-    "ironfurnaces:copper_furnace", "ironfurnaces:iron_furnace", "ironfurnaces:silver_furnace", "ironfurnaces:gold_furnace",
-    "ironfurnaces:diamond_furnace", "ironfurnaces:emerald_furnace", "ironfurnaces:crystal_furnace",
-    "ironfurnaces:obsidian_furnace", "ironfurnaces:netherite_furnace", "ironfurnaces:allthemodium_furnace",
-    "ironfurnaces:vibranium_furnace", "ironfurnaces:unobtainium_furnace", "ironfurnaces:million_furnace",
+    "ironfurnaces:copper_furnace",
+    "ironfurnaces:iron_furnace",
+    "ironfurnaces:silver_furnace",
+    "ironfurnaces:gold_furnace",
+    "ironfurnaces:diamond_furnace",
+    "ironfurnaces:emerald_furnace",
+    "ironfurnaces:crystal_furnace",
+    "ironfurnaces:obsidian_furnace",
+    "ironfurnaces:netherite_furnace",
+    "ironfurnaces:allthemodium_furnace",
+    "ironfurnaces:vibranium_furnace",
+    "ironfurnaces:unobtainium_furnace",
+    "ironfurnaces:million_furnace",
 ];
 
 // ---- What an item is
@@ -86,19 +97,35 @@ pub(crate) fn augment_slot(id: &str) -> Option<usize> {
 /// getAugment: 1 for blasting, speed and factory; 2 for smoking, fuel and generator.
 fn augment_value(host: &dyn Host, stack: &Option<ItemStack>) -> i32 {
     match stack.as_ref().map(|s| id_of(host, s)).as_deref() {
-        Some("ironfurnaces:augment_blasting" | "ironfurnaces:augment_speed" | "ironfurnaces:augment_factory") => 1,
-        Some("ironfurnaces:augment_smoking" | "ironfurnaces:augment_fuel" | "ironfurnaces:augment_generator") => 2,
+        Some(
+            "ironfurnaces:augment_blasting"
+            | "ironfurnaces:augment_speed"
+            | "ironfurnaces:augment_factory",
+        ) => 1,
+        Some(
+            "ironfurnaces:augment_smoking"
+            | "ironfurnaces:augment_fuel"
+            | "ironfurnaces:augment_generator",
+        ) => 2,
         _ => 0,
     }
 }
 
 /// 0 furnace, 1 factory, 2 generator: the blue augment.
 pub(crate) fn mode(host: &dyn Host, e: &Fields) -> i32 {
-    e.items.get(AUGMENT_BLUE).map_or(0, |s| augment_value(host, s))
+    e.items
+        .get(AUGMENT_BLUE)
+        .map_or(0, |s| augment_value(host, s))
 }
 
 pub(crate) fn recipe_kind(host: &dyn Host, e: &Fields) -> Kind {
-    match e.items.get(AUGMENT_RED).and_then(|s| s.as_ref()).map(|s| id_of(host, s)).as_deref() {
+    match e
+        .items
+        .get(AUGMENT_RED)
+        .and_then(|s| s.as_ref())
+        .map(|s| id_of(host, s))
+        .as_deref()
+    {
         Some("ironfurnaces:augment_smoking") => Kind::Smoking,
         Some("ironfurnaces:augment_blasting") => Kind::Blasting,
         _ => Kind::Smelting,
@@ -109,7 +136,12 @@ fn green(host: &dyn Host, e: &Fields, id: &str) -> bool {
     e.items.get(AUGMENT_GREEN).is_some_and(|s| is(host, s, id))
 }
 
-pub(crate) fn cook_recipe(host: &dyn Host, level: LevelRef, e: &Fields, stack: &ItemStack) -> Option<Cooked> {
+pub(crate) fn cook_recipe(
+    host: &dyn Host,
+    level: LevelRef,
+    e: &Fields,
+    stack: &ItemStack,
+) -> Option<Cooked> {
     recipes::cook(host, level, recipe_kind(host, e), stack)
 }
 
@@ -140,15 +172,30 @@ fn speed_for(host: &dyn Host, block: &str, recipe: &Cooked) -> i32 {
 }
 
 /// getCookTime / getFactoryCookTime: the ticks one smelt of what's in `slot` takes now; `current` when it's empty.
-fn cook_time(host: &dyn Host, level: LevelRef, block: &str, e: &Fields, slot: usize, current: i32) -> i32 {
+fn cook_time(
+    host: &dyn Host,
+    level: LevelRef,
+    block: &str,
+    e: &Fields,
+    slot: usize,
+    current: i32,
+) -> i32 {
     match e.items[slot].as_ref() {
         None => current,
         Some(stack) => cook_time_of(host, level, block, e, stack),
     }
 }
 
-pub(crate) fn cook_time_of(host: &dyn Host, level: LevelRef, block: &str, e: &Fields, stack: &ItemStack) -> i32 {
-    let Some(recipe) = cook_recipe(host, level, e, stack) else { return 0 };
+pub(crate) fn cook_time_of(
+    host: &dyn Host,
+    level: LevelRef,
+    block: &str,
+    e: &Fields,
+    stack: &ItemStack,
+) -> i32 {
+    let Some(recipe) = cook_recipe(host, level, e, stack) else {
+        return 0;
+    };
     let mut speed = speed_for(host, block, &recipe);
     if green(host, e, "ironfurnaces:augment_speed") {
         speed = (speed / 2).max(1);
@@ -173,9 +220,15 @@ fn generation(host: &dyn Host, block: &str, e: &Fields) -> i32 {
 
 /// getGeneratorBurn and isItemGeneratorFuel.
 pub(crate) fn generator_burn_of(host: &dyn Host, e: &Fields, stack: &ItemStack) -> i32 {
-    let mut burn = match e.items[AUGMENT_RED].as_ref().map(|s| id_of(host, s)).as_deref() {
+    let mut burn = match e.items[AUGMENT_RED]
+        .as_ref()
+        .map(|s| id_of(host, s))
+        .as_deref()
+    {
         Some("ironfurnaces:augment_smoking") => smoking_burn(host, stack),
-        Some("ironfurnaces:augment_blasting") => recipes::generator_energy(host, stack).map_or(0, |e| e / 20),
+        Some("ironfurnaces:augment_blasting") => {
+            recipes::generator_energy(host, stack).map_or(0, |e| e / 20)
+        }
         _ => burn_time(host, stack),
     };
     if green(host, e, "ironfurnaces:augment_speed") {
@@ -198,7 +251,9 @@ pub(crate) fn factory_range(tier: i32) -> std::ops::Range<usize> {
 /// How many smelts fit at once: `per` made each, `have` already in a slot that holds `limit`, up to `mult` (1 for a
 /// plain furnace) and the `inputs` there are. An empty slot (`have` 0) holds `limit` too.
 pub(crate) fn smelt_times(limit: u32, have: u32, per: u32, mult: u32, inputs: u32) -> u32 {
-    (limit.saturating_sub(have) / per.max(1)).min(mult.max(1)).min(inputs)
+    (limit.saturating_sub(have) / per.max(1))
+        .min(mult.max(1))
+        .min(inputs)
 }
 
 /// canSmelt / canFactorySmelt.
@@ -207,17 +262,36 @@ fn can_smelt(host: &dyn Host, recipe: Option<&Cooked>, e: &Fields, output: usize
     let limit = max_stack(host, &recipe.result);
     match e.items[output].as_ref() {
         None => smelt_times(limit, 0, recipe.result.count(), 1, 1) == 1,
-        Some(out) => out.is_stackable_with(&recipe.result) && smelt_times(limit, out.count(), recipe.result.count(), 1, 1) == 1,
+        Some(out) => {
+            out.is_stackable_with(&recipe.result)
+                && smelt_times(limit, out.count(), recipe.result.count(), 1, 1) == 1
+        }
     }
 }
 
 /// smeltItem / smeltItemMult / the factory's: what's made, kept for its experience (setRecipeUsed).
-fn smelt(host: &dyn Host, block: &str, recipe: &Cooked, e: &mut Fields, input: usize, output: usize, wet_sponge: bool) {
-    let Some(stack) = e.items[input].clone() else { return };
+fn smelt(
+    host: &dyn Host,
+    block: &str,
+    recipe: &Cooked,
+    e: &mut Fields,
+    input: usize,
+    output: usize,
+    wet_sponge: bool,
+) {
+    let Some(stack) = e.items[input].clone() else {
+        return;
+    };
     let mult = config::smelt_mult(host, block) as u32;
     let have = e.items[output].as_ref().map_or(0, |s| s.count());
     let per = recipe.result.count();
-    let times = smelt_times(max_stack(host, &recipe.result), have, per, mult, stack.count());
+    let times = smelt_times(
+        max_stack(host, &recipe.result),
+        have,
+        per,
+        mult,
+        stack.count(),
+    );
     if times == 0 {
         return;
     }
@@ -228,7 +302,10 @@ fn smelt(host: &dyn Host, block: &str, recipe: &Cooked, e: &mut Fields, input: u
         None => e.items[output] = with_count(&recipe.result, per * times),
     }
     add_recipe_used(&mut e.nbt, &recipe.id, recipe.experience, times);
-    if wet_sponge && id_of(host, &stack) == "minecraft:wet_sponge" && is(host, &e.items[FUEL], "minecraft:bucket") {
+    if wet_sponge
+        && id_of(host, &stack) == "minecraft:wet_sponge"
+        && is(host, &e.items[FUEL], "minecraft:bucket")
+    {
         e.items[FUEL] = stack_of(host, "minecraft:water_bucket", 1);
     }
     shrink(&mut e.items[input], times);
@@ -260,7 +337,11 @@ pub(crate) fn take_experience(nbt: &mut Compound) -> (Vec<String>, u32) {
     let mut ids = Vec::new();
     for key in keys {
         if let Some(Tag::Compound(c)) = nbt.remove(&key) {
-            ids.push(key.to_string_lossy().trim_start_matches("RecipesUsed.").to_owned());
+            ids.push(
+                key.to_string_lossy()
+                    .trim_start_matches("RecipesUsed.")
+                    .to_owned(),
+            );
             let amount = f64::from(get_i(&c, "n", 0)) * get_f(&c, "xp");
             total += amount.floor().max(0.0) as u32;
             if roll() < amount.fract() {
@@ -277,7 +358,9 @@ pub(crate) fn stored_experience(nbt: &Compound) -> u32 {
 }
 
 fn roll() -> f64 {
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.subsec_nanos());
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.subsec_nanos());
     f64::from(nanos % 1000) / 1000.0
 }
 
@@ -294,12 +377,18 @@ fn pull_into(
     accept: &dyn Fn(&dyn Host, &Fields, &ItemStack) -> bool,
 ) {
     let there = offset(pos, dir);
-    let Some(other) = level.capability(host, &ITEMS, there, Some(DIRECTIONS[opposite(dir)])) else { return };
+    let Some(other) = level.capability(host, &ITEMS, there, Some(DIRECTIONS[opposite(dir)])) else {
+        return;
+    };
     let size = other.size(host);
     for i in 0..size {
-        let Some(resource) = other.resource(host, i) else { continue };
+        let Some(resource) = other.resource(host, i) else {
+            continue;
+        };
         let available = other.amount(host, i);
-        let Some(stack) = resource.to_stack(available.max(1)) else { continue };
+        let Some(stack) = resource.to_stack(available.max(1)) else {
+            continue;
+        };
         let room = match e.items[slot].as_ref() {
             Some(have) if !have.is_stackable_with(&stack) => continue,
             Some(have) => max_stack(host, have).saturating_sub(have.count()),
@@ -330,13 +419,30 @@ fn pull_into(
 }
 
 /// autoIO's output half: from `slot` into the neighbour at `dir`.
-fn push_from(host: &mut dyn ServerHost, level: LevelRef, e: &mut Fields, pos: Pos, dir: usize, slot: usize) {
-    let Some(stack) = e.items[slot].clone() else { return };
+fn push_from(
+    host: &mut dyn ServerHost,
+    level: LevelRef,
+    e: &mut Fields,
+    pos: Pos,
+    dir: usize,
+    slot: usize,
+) {
+    let Some(stack) = e.items[slot].clone() else {
+        return;
+    };
     let there = offset(pos, dir);
-    let Some(other) = level.capability(host, &ITEMS, there, Some(DIRECTIONS[opposite(dir)])) else { return };
+    let Some(other) = level.capability(host, &ITEMS, there, Some(DIRECTIONS[opposite(dir)])) else {
+        return;
+    };
     let resource = ItemResource::of(&stack);
     let went = host
-        .transaction(|host, tx| Ok::<u32, ()>(other.insert(host, tx, &resource, stack.count()).unwrap_or(0)))
+        .transaction(|host, tx| {
+            Ok::<u32, ()>(
+                other
+                    .insert(host, tx, &resource, stack.count())
+                    .unwrap_or(0),
+            )
+        })
         .unwrap_or(0)
         .min(stack.count());
     shrink(&mut e.items[slot], went);
@@ -357,7 +463,13 @@ pub(crate) fn auto_io(nbt: &Compound, i: usize) -> bool {
 }
 
 /// autoIO, autoIOGenerator and autoFactoryIO.
-fn auto_transfer(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mut Fields, pos: Pos) {
+fn auto_transfer(
+    host: &mut dyn ServerHost,
+    level: LevelRef,
+    block: &str,
+    e: &mut Fields,
+    pos: Pos,
+) {
     let (auto_in, auto_out) = (auto_io(&e.nbt, 0), auto_io(&e.nbt, 1));
     if !auto_in && !auto_out {
         return;
@@ -371,12 +483,17 @@ fn auto_transfer(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mu
         match m {
             0 => {
                 if auto_in && matches!(setting, 1 | 3) {
-                    pull_into(host, level, e, pos, dir, INPUT, &|h, e, s| has_cook_recipe(h, level, e, s));
+                    pull_into(host, level, e, pos, dir, INPUT, &|h, e, s| {
+                        has_cook_recipe(h, level, e, s)
+                    });
                 }
                 if auto_in && setting == 4 {
                     pull_into(host, level, e, pos, dir, FUEL, &|h, _, s| is_fuel(h, s));
                 }
-                if auto_out && setting == 4 && e.items[FUEL].as_ref().is_some_and(|f| !is_fuel(host, f)) {
+                if auto_out
+                    && setting == 4
+                    && e.items[FUEL].as_ref().is_some_and(|f| !is_fuel(host, f))
+                {
                     push_from(host, level, e, pos, dir, FUEL);
                 }
                 if auto_out && matches!(setting, 2 | 3) {
@@ -387,7 +504,9 @@ fn auto_transfer(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mu
                 let range = factory_range(config::tier(host, block));
                 if auto_in && matches!(setting, 1 | 3) {
                     for j in range.clone() {
-                        pull_into(host, level, e, pos, dir, FACTORY_INPUT[j], &|h, e, s| has_cook_recipe(h, level, e, s));
+                        pull_into(host, level, e, pos, dir, FACTORY_INPUT[j], &|h, e, s| {
+                            has_cook_recipe(h, level, e, s)
+                        });
                     }
                 }
                 if auto_out && matches!(setting, 2 | 3) {
@@ -403,10 +522,16 @@ fn auto_transfer(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mu
                 if auto_in {
                     pull_into(host, level, e, pos, dir, GENERATOR_FUEL, &|h, e, s| {
                         let id = id_of(h, s);
-                        id != "minecraft:bucket" && !is_heater_item(&id) && generator_burn_of(h, e, s) > 0
+                        id != "minecraft:bucket"
+                            && !is_heater_item(&id)
+                            && generator_burn_of(h, e, s) > 0
                     });
                 }
-                if auto_out && e.items[GENERATOR_FUEL].as_ref().is_some_and(|f| generator_burn_of(host, e, f) <= 0) {
+                if auto_out
+                    && e.items[GENERATOR_FUEL]
+                        .as_ref()
+                        .is_some_and(|f| generator_burn_of(host, e, f) <= 0)
+                {
                     push_from(host, level, e, pos, dir, GENERATOR_FUEL);
                 }
             }
@@ -428,7 +553,14 @@ fn energy_to(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, dir: usize, a
     if amount <= 0 {
         return 0;
     }
-    let Some(other) = level.capability(host, &ENERGY, offset(pos, dir), Some(DIRECTIONS[opposite(dir)])) else { return 0 };
+    let Some(other) = level.capability(
+        host,
+        &ENERGY,
+        offset(pos, dir),
+        Some(DIRECTIONS[opposite(dir)]),
+    ) else {
+        return 0;
+    };
     host.transaction(|host, tx| other.insert(host, tx, amount as u32))
         .unwrap_or(0)
         .min(amount as u32) as i32
@@ -436,13 +568,23 @@ fn energy_to(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, dir: usize, a
 
 /// Whether the block at `dir` has room for energy (energyHandlerCanAccept and amount < capacity).
 fn energy_room(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, dir: usize) -> bool {
-    let Some(other) = level.capability(host, &ENERGY, offset(pos, dir), Some(DIRECTIONS[opposite(dir)])) else { return false };
+    let Some(other) = level.capability(
+        host,
+        &ENERGY,
+        offset(pos, dir),
+        Some(DIRECTIONS[opposite(dir)]),
+    ) else {
+        return false;
+    };
     other.amount(host) < other.capacity(host)
 }
 
 /// energyOut: to each side set to output whose neighbour takes energy, as much as it takes.
 fn energy_out(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mut Fields, pos: Pos) {
-    let sides: Vec<usize> = (0..6).filter(|&d| matches!(side(&e.nbt, d), 2 | 3)).filter(|&d| energy_room(host, level, pos, d)).collect();
+    let sides: Vec<usize> = (0..6)
+        .filter(|&d| matches!(side(&e.nbt, d), 2 | 3))
+        .filter(|&d| energy_room(host, level, pos, d))
+        .collect();
     for dir in sides {
         let have = energy(e);
         if have <= 0 {
@@ -455,7 +597,13 @@ fn energy_out(host: &mut dyn ServerHost, level: LevelRef, block: &str, e: &mut F
 
 fn set_prop(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, key: &str, value: &str) {
     if level.block_property(&*host, pos, key) != Some(value) {
-        let _ = level.set_block_property(host, pos, key, value, BlockUpdateFlags::NEIGHBORS | BlockUpdateFlags::CLIENTS);
+        let _ = level.set_block_property(
+            host,
+            pos,
+            key,
+            value,
+            BlockUpdateFlags::NEIGHBORS | BlockUpdateFlags::CLIENTS,
+        );
     }
 }
 
@@ -463,7 +611,9 @@ fn set_prop(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, key: &str, val
 
 /// BlockIronFurnaceTileBase.tick.
 pub(crate) fn tick(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &mut Fields) {
-    let Some(level) = host.level(host.dimension()) else { return };
+    let Some(level) = host.level(host.dimension()) else {
+        return;
+    };
     recipes::ensure_sets(host);
     if e.items.len() < SLOTS {
         e.items.resize(SLOTS, None);
@@ -527,7 +677,10 @@ pub(crate) fn tick(host: &mut dyn ServerHost, pos: Pos, block: &str, e: &mut Fie
         let jovial = get_i(&e.nbt, "Jovial", 0).clamp(0, 2).to_string();
         set_prop(host, level, pos, "jovial", &jovial);
     }
-    let facing = level.block_property(&*host, pos, "facing").unwrap_or("north").to_owned();
+    let facing = level
+        .block_property(&*host, pos, "facing")
+        .unwrap_or("north")
+        .to_owned();
     fill_data(host, block, e, mode(host, e), &facing);
 }
 
@@ -555,7 +708,15 @@ fn first_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &str,
     let _ = level;
 }
 
-fn furnace_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &str, e: &mut Fields, time: i64, was_burning: bool) {
+fn furnace_tick(
+    host: &mut dyn ServerHost,
+    level: LevelRef,
+    pos: Pos,
+    block: &str,
+    e: &mut Fields,
+    time: i64,
+    was_burning: bool,
+) {
     let mut burn = get_i(&e.nbt, "BurnTime", 0);
     let mut cook = get_i(&e.nbt, "CookTime", 0);
     let total = get_i(&e.nbt, "CookTimeTotal", 200);
@@ -564,7 +725,9 @@ fn furnace_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &st
     }
     let has_fuel = e.items[FUEL].is_some();
     if burn > 0 || (has_fuel && e.items[INPUT].is_some()) {
-        let recipe = e.items[INPUT].as_ref().and_then(|s| cook_recipe(host, level, e, s));
+        let recipe = e.items[INPUT]
+            .as_ref()
+            .and_then(|s| cook_recipe(host, level, e, s));
         let valid = can_smelt(host, recipe.as_ref(), e, OUTPUT);
         if burn <= 0 && valid {
             burn = consume_fuel(host, level, e, total);
@@ -592,19 +755,33 @@ fn furnace_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &st
         auto_transfer(host, level, block, e, pos);
     }
     if was_burning != (burn > 0) {
-        set_prop(host, level, pos, "lit", if burn > 0 { "true" } else { "false" });
+        set_prop(
+            host,
+            level,
+            pos,
+            "lit",
+            if burn > 0 { "true" } else { "false" },
+        );
     }
 }
 
 /// The furnace's fuel, or the Wireless Heat Transmitter's power through its receiver: how long it now burns.
 fn consume_fuel(host: &mut dyn ServerHost, level: LevelRef, e: &mut Fields, total: i32) -> i32 {
-    let Some(fuel) = e.items[FUEL].clone() else { return 0 };
+    let Some(fuel) = e.items[FUEL].clone() else {
+        return 0;
+    };
     let fuel_augment = green(host, e, "ironfurnaces:augment_fuel");
     let speed_augment = green(host, e, "ironfurnaces:augment_speed");
     let fuel_id = id_of(host, &fuel);
     if is_heater_item(&fuel_id) {
-        let Some(bound) = heater_position(&fuel) else { return 0 };
-        let Some(heater) = level.block(host, bound).filter(|b| b.id(host).is_some_and(is_heater)).and_then(|_| host.block_entity(level, bound)) else {
+        let Some(bound) = heater_position(&fuel) else {
+            return 0;
+        };
+        let Some(heater) = level
+            .block(host, bound)
+            .filter(|b| b.id(host).is_some_and(is_heater))
+            .and_then(|_| host.block_entity(level, bound))
+        else {
             return 0;
         };
         let stored = heater.data(host).map_or(0, |d| get_i(&d, "energy", 0));
@@ -657,7 +834,14 @@ fn consume_fuel(host: &mut dyn ServerHost, level: LevelRef, e: &mut Fields, tota
     burn
 }
 
-fn factory_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &str, e: &mut Fields, time: i64) {
+fn factory_tick(
+    host: &mut dyn ServerHost,
+    level: LevelRef,
+    pos: Pos,
+    block: &str,
+    e: &mut Fields,
+    time: i64,
+) {
     let range = factory_range(config::tier(host, block));
     let split = get_i(&e.nbt, "AutoSplit", 0) != 0;
     if split {
@@ -691,7 +875,12 @@ fn factory_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &st
                     if cook[j] >= totals[j] {
                         cook[j] = 0;
                         if used < f64::from(need) {
-                            set_energy(host, block, e, (f64::from(energy(e)) - (f64::from(need) - used)) as i32);
+                            set_energy(
+                                host,
+                                block,
+                                e,
+                                (f64::from(energy(e)) - (f64::from(need) - used)) as i32,
+                            );
                         }
                         used = 0.0;
                         totals[j] = cook_time(host, level, block, e, slot, totals[j]);
@@ -720,7 +909,13 @@ fn factory_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &st
 
 /// split, fillEmptySlots and getSplitCounts: the factory's inputs even each other out. `full` is `split(true, ..)`, after
 /// a smelt; otherwise it splits only while a row is empty.
-fn auto_split(host: &dyn Host, block: &str, e: &mut Fields, range: std::ops::Range<usize>, full: bool) {
+fn auto_split(
+    host: &dyn Host,
+    block: &str,
+    e: &mut Fields,
+    range: std::ops::Range<usize>,
+    full: bool,
+) {
     // canAutoSplitWork: not the Million, Allthemodium, Vibranium or Unobtainium furnaces.
     if config::smelt_mult(host, block) > 1 {
         return;
@@ -730,12 +925,16 @@ fn auto_split(host: &dyn Host, block: &str, e: &mut Fields, range: std::ops::Ran
         return;
     }
     // itemToCheck: the last row's stack.
-    let Some(check) = slots.iter().rev().find_map(|&s| e.items[s].clone()) else { return };
+    let Some(check) = slots.iter().rev().find_map(|&s| e.items[s].clone()) else {
+        return;
+    };
     // fillEmptySlots.
     let mut amount = slots.iter().filter(|&&s| e.items[s].is_none()).count() as u32;
     if amount > 0 {
         for &j in &slots {
-            let Some(stack) = e.items[j].clone() else { continue };
+            let Some(stack) = e.items[j].clone() else {
+                continue;
+            };
             if stack.count() > 1 && amount > 0 {
                 if amount >= stack.count() {
                     amount = stack.count() - 1;
@@ -752,12 +951,19 @@ fn auto_split(host: &dyn Host, block: &str, e: &mut Fields, range: std::ops::Ran
         }
     }
     // getSplitCounts over the rows holding that item, the odd ones to the first rows.
-    let rows: Vec<usize> = slots.iter().copied().filter(|&s| e.items[s].as_ref().is_some_and(|i| i.same_item(&check))).collect();
+    let rows: Vec<usize> = slots
+        .iter()
+        .copied()
+        .filter(|&s| e.items[s].as_ref().is_some_and(|i| i.same_item(&check)))
+        .collect();
     let n = rows.len() as u32;
     if n == 0 {
         return;
     }
-    let sum: u32 = rows.iter().map(|&s| e.items[s].as_ref().map_or(0, |i| i.count())).sum();
+    let sum: u32 = rows
+        .iter()
+        .map(|&s| e.items[s].as_ref().map_or(0, |i| i.count()))
+        .sum();
     let (each, extra) = (sum / n, sum % n);
     for (i, &s) in rows.iter().enumerate() {
         let want = each + u32::from((i as u32) < extra);
@@ -770,7 +976,14 @@ fn auto_split(host: &dyn Host, block: &str, e: &mut Fields, range: std::ops::Ran
     }
 }
 
-fn generator_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &str, e: &mut Fields, time: i64) {
+fn generator_tick(
+    host: &mut dyn ServerHost,
+    level: LevelRef,
+    pos: Pos,
+    block: &str,
+    e: &mut Fields,
+    time: i64,
+) {
     let capacity = config::capacity(host, block);
     let mut burn = get_f(&e.nbt, "GeneratorBurn");
     let mut recent = get_i(&e.nbt, "GeneratorRecent", 0);
@@ -789,7 +1002,13 @@ fn generator_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, block: &
                 }
             }
         }
-        set_prop(host, level, pos, "lit", if burn > 0.0 { "true" } else { "false" });
+        set_prop(
+            host,
+            level,
+            pos,
+            "lit",
+            if burn > 0.0 { "true" } else { "false" },
+        );
         if burn > 0.0 {
             let rf = generation(host, block, e);
             let max = f64::from(recent) * 20.0;
@@ -835,7 +1054,17 @@ fn rainbow_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, e: &mut Fi
     }
     let owner = owner_of(&e.nbt);
     let mut generating = owner.is_some();
-    const TIERS: [&str; 9] = ["iron", "gold", "diamond", "emerald", "obsidian", "crystal", "netherite", "copper", "silver"];
+    const TIERS: [&str; 9] = [
+        "iron",
+        "gold",
+        "diamond",
+        "emerald",
+        "obsidian",
+        "crystal",
+        "netherite",
+        "copper",
+        "silver",
+    ];
     let mut running = [false; 9];
     let mut rainbows = 0;
     let mut rainbow_generators = 0;
@@ -848,18 +1077,27 @@ fn rainbow_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, e: &mut Fi
                 rainbow_generators += 1;
                 continue;
             }
-            let Some(id) = level.block(host, p).and_then(|b| b.id(host).map(str::to_owned)) else { continue };
+            let Some(id) = level
+                .block(host, p)
+                .and_then(|b| b.id(host).map(str::to_owned))
+            else {
+                continue;
+            };
             if !is_furnace(&id) {
                 continue;
             }
-            let Some(data) = host.block_entity(level, p).and_then(|b| b.data(host)) else { continue };
+            let Some(data) = host.block_entity(level, p).and_then(|b| b.data(host)) else {
+                continue;
+            };
             if is_rainbow(&id) {
                 rainbows += 1;
                 if get_i(&data, "hz_mode", 0) == 2 {
                     rainbow_generators += 1;
                 }
             }
-            if let Some(i) = TIERS.iter().position(|t| id == format!("ironfurnaces:{t}_furnace"))
+            if let Some(i) = TIERS
+                .iter()
+                .position(|t| id == format!("ironfurnaces:{t}_furnace"))
                 && get_f(&data, "GeneratorBurn") > 0.0
                 && get_i(&data, "energy", 0) < config::capacity(host, &id)
             {
@@ -872,11 +1110,21 @@ fn rainbow_tick(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, e: &mut Fi
     }
     let generating = generating && running.iter().all(|r| *r);
     set_i(&mut e.nbt, "RainbowGen", i32::from(generating));
-    set_prop(host, level, pos, "rainbow", if generating { "true" } else { "false" });
+    set_prop(
+        host,
+        level,
+        pos,
+        "rainbow",
+        if generating { "true" } else { "false" },
+    );
     if generating {
         let sides: Vec<usize> = (0..6)
             .filter(|&d| matches!(side(&e.nbt, d), 2 | 3))
-            .filter(|&d| level.capability(host, &ENERGY, offset(pos, d), Some(DIRECTIONS[opposite(d)])).is_some())
+            .filter(|&d| {
+                level
+                    .capability(host, &ENERGY, offset(pos, d), Some(DIRECTIONS[opposite(d)]))
+                    .is_some()
+            })
             .collect();
         if sides.is_empty() {
             return;
@@ -892,7 +1140,12 @@ pub(crate) fn owner_of(nbt: &Compound) -> Option<u128> {
     match nbt.get(&java("Owner")) {
         Some(Tag::IntArray(a)) if a.len() == 4 => {
             let w: Vec<u32> = a.iter().map(|v| *v as u32).collect();
-            Some((u128::from(w[0]) << 96) | (u128::from(w[1]) << 64) | (u128::from(w[2]) << 32) | u128::from(w[3]))
+            Some(
+                (u128::from(w[0]) << 96)
+                    | (u128::from(w[1]) << 64)
+                    | (u128::from(w[2]) << 32)
+                    | u128::from(w[3]),
+            )
         }
         _ => None,
     }
@@ -900,7 +1153,12 @@ pub(crate) fn owner_of(nbt: &Compound) -> Option<u128> {
 
 /// `Owner`, as UUIDUtil.CODEC writes it: four ints, most significant first.
 pub(crate) fn set_owner(nbt: &mut Compound, uuid: u128) {
-    let words = vec![(uuid >> 96) as u32 as i32, (uuid >> 64) as u32 as i32, (uuid >> 32) as u32 as i32, uuid as u32 as i32];
+    let words = vec![
+        (uuid >> 96) as u32 as i32,
+        (uuid >> 64) as u32 as i32,
+        (uuid >> 32) as u32 as i32,
+        uuid as u32 as i32,
+    ];
     nbt.insert(java("Owner"), Tag::IntArray(words));
 }
 
@@ -911,11 +1169,12 @@ pub(crate) fn award(host: &mut dyn ServerHost, player: PlayerRef, ids: &[String]
         let _ = player.award_recipes(host, &ids);
     }
     if amount > 0 {
-        let orbs = player.level(host).zip(player.entity().position(host)).is_some_and(|(level, at)| level.award_experience(host, at[0], at[1], at[2], amount));
-        if !orbs {
-            if let Ok(points) = i32::try_from(amount) {
-                let _ = player.give_experience_points(host, points);
-            }
+        let orbs = player
+            .level(host)
+            .zip(player.entity().position(host))
+            .is_some_and(|(level, at)| level.award_experience(host, at[0], at[1], at[2], amount));
+        if !orbs && let Ok(points) = i32::try_from(amount) {
+            let _ = player.give_experience_points(host, points);
         }
     }
 }
@@ -924,7 +1183,11 @@ pub(crate) fn award(host: &mut dyn ServerHost, player: PlayerRef, ids: &[String]
 pub(crate) fn heater_position(stack: &ItemStack) -> Option<Pos> {
     let c = custom_data(stack)?;
     c.get(&java("HeaterPosX"))?;
-    Some([get_i(&c, "HeaterPosX", 0), get_i(&c, "HeaterPosY", 0), get_i(&c, "HeaterPosZ", 0)])
+    Some([
+        get_i(&c, "HeaterPosX", 0),
+        get_i(&c, "HeaterPosY", 0),
+        get_i(&c, "HeaterPosZ", 0),
+    ])
 }
 
 pub(crate) fn set_heater_position(stack: &mut ItemStack, pos: Pos) {
@@ -969,7 +1232,14 @@ fn drop_contents(host: &mut dyn ServerHost, level: LevelRef, pos: Pos, e: &mut F
             continue;
         }
         if let Some(stack) = e.items[i].take() {
-            let _ = level.spawn_item(host, f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2]), stack, 10);
+            let _ = level.spawn_item(
+                host,
+                f64::from(pos[0]),
+                f64::from(pos[1]),
+                f64::from(pos[2]),
+                stack,
+                10,
+            );
         }
     }
 }
@@ -1035,19 +1305,34 @@ fn fill_data(host: &dyn Host, block: &str, e: &mut Fields, m: i32, facing: &str)
 // ---- Who may put what where
 
 /// IisItemValidForSlot, with the furnace's mode and tier.
-pub(crate) fn valid_for_slot(host: &dyn Host, level: LevelRef, block: &str, e: &Fields, slot: usize, stack: &ItemStack) -> bool {
+pub(crate) fn valid_for_slot(
+    host: &dyn Host,
+    level: LevelRef,
+    block: &str,
+    e: &Fields,
+    slot: usize,
+    stack: &ItemStack,
+) -> bool {
     let id = id_of(host, stack);
     match mode(host, e) {
         0 => match slot {
             INPUT => has_cook_recipe(host, level, e, stack),
-            FUEL => burn_time(host, stack) > 0 || (id == "minecraft:bucket" && !is(host, &e.items[FUEL], "minecraft:bucket")) || is_heater_item(&id),
+            FUEL => {
+                burn_time(host, stack) > 0
+                    || (id == "minecraft:bucket" && !is(host, &e.items[FUEL], "minecraft:bucket"))
+                    || is_heater_item(&id)
+            }
             _ => false,
         },
         1 => {
             let range = factory_range(config::tier(host, block));
-            (7..=12).contains(&slot) && range.contains(&(slot - 7)) && has_cook_recipe(host, level, e, stack)
+            (7..=12).contains(&slot)
+                && range.contains(&(slot - 7))
+                && has_cook_recipe(host, level, e, stack)
         }
-        _ => slot == GENERATOR_FUEL && !is_heater_item(&id) && generator_burn_of(host, e, stack) > 0,
+        _ => {
+            slot == GENERATOR_FUEL && !is_heater_item(&id) && generator_burn_of(host, e, stack) > 0
+        }
     }
 }
 
@@ -1075,7 +1360,13 @@ pub(crate) fn slots_for_face(host: &dyn Host, e: &Fields, setting: i32) -> &'sta
 }
 
 /// IcanExtractItem.
-pub(crate) fn can_extract(host: &dyn Host, e: &Fields, slot: usize, stack: &ItemStack, setting: i32) -> bool {
+pub(crate) fn can_extract(
+    host: &dyn Host,
+    e: &Fields,
+    slot: usize,
+    stack: &ItemStack,
+    setting: i32,
+) -> bool {
     let bucket = id_of(host, stack) == "minecraft:bucket";
     match mode(host, e) {
         0 => match setting {

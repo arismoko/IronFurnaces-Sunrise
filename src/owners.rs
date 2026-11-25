@@ -17,7 +17,12 @@ fn encode(list: &Vec<Pos>) -> Result<Compound, AttachmentError> {
 
 fn decode(c: &Compound) -> Result<Vec<Pos>, AttachmentError> {
     let flat = int_array(c, "furnaces", 0);
-    Ok(flat.as_chunks::<3>().0.iter().map(|p| [p[0], p[1], p[2]]).collect())
+    Ok(flat
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|p| [p[0], p[1], p[2]])
+        .collect())
 }
 
 /// The key issued for this registration pass (a reinstall issues a new one).
@@ -50,5 +55,8 @@ pub(crate) fn add(host: &mut dyn ServerHost, player: u128, pos: Pos) {
 
 pub(crate) fn list(host: &mut dyn ServerHost, player: u128) -> Vec<Pos> {
     let Some(key) = key() else { return Vec::new() };
-    key.get_existing(host, Holder::Player(player), |list| list.cloned()).ok().flatten().unwrap_or_default()
+    key.get_existing(host, Holder::Player(player), |list| list.cloned())
+        .ok()
+        .flatten()
+        .unwrap_or_default()
 }

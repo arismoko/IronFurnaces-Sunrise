@@ -18,9 +18,25 @@ pub(crate) const B_SIDE: i32 = 10; // + screen side * 5 + setting
 
 /// The container's slot positions (BlockIronFurnaceContainerBase).
 const AT: [[f32; 2]; SLOTS] = [
-    [56.0, 17.0], [56.0, 53.0], [116.0, 35.0], [26.0, 35.0], [80.0, 35.0], [134.0, 35.0], [56.0, 40.0],
-    [28.0, 6.0], [49.0, 6.0], [70.0, 6.0], [91.0, 6.0], [112.0, 6.0], [133.0, 6.0],
-    [28.0, 55.0], [49.0, 55.0], [70.0, 55.0], [91.0, 55.0], [112.0, 55.0], [133.0, 55.0],
+    [56.0, 17.0],
+    [56.0, 53.0],
+    [116.0, 35.0],
+    [26.0, 35.0],
+    [80.0, 35.0],
+    [134.0, 35.0],
+    [56.0, 40.0],
+    [28.0, 6.0],
+    [49.0, 6.0],
+    [70.0, 6.0],
+    [91.0, 6.0],
+    [112.0, 6.0],
+    [133.0, 6.0],
+    [28.0, 55.0],
+    [49.0, 55.0],
+    [70.0, 55.0],
+    [91.0, 55.0],
+    [112.0, 55.0],
+    [133.0, 55.0],
 ];
 
 /// The Slot subclasses' isActive: which slots a page shows.
@@ -32,7 +48,8 @@ pub(crate) fn slot_shown(augment_page: bool, mode: i32, tier: i32, slot: usize) 
         0 => matches!(slot, INPUT | FUEL | OUTPUT),
         1 => {
             let range = factory_range(tier);
-            ((7..=12).contains(&slot) && range.contains(&(slot - 7))) || ((13..=18).contains(&slot) && range.contains(&(slot - 13)))
+            ((7..=12).contains(&slot) && range.contains(&(slot - 7)))
+                || ((13..=18).contains(&slot) && range.contains(&(slot - 13)))
         }
         _ => slot == GENERATOR_FUEL,
     }
@@ -42,7 +59,10 @@ pub(crate) fn slot_shown(augment_page: bool, mode: i32, tier: i32, slot: usize) 
 fn page_of(host: &dyn Host, pos: Pos) -> Option<(bool, i32)> {
     let level = host.level(host.dimension())?;
     let data = host.block_entity(level, pos)?.data(host)?;
-    Some((get_i(&data, "AugmentGUI", 0) != 0, get_i(&data, "hz_mode", 0)))
+    Some((
+        get_i(&data, "AugmentGUI", 0) != 0,
+        get_i(&data, "hz_mode", 0),
+    ))
 }
 
 /// The client's screen for one opening of a furnace's or the transmitter's menu (`register_menu_screen`): the layout
@@ -58,7 +78,9 @@ pub(crate) fn create(host: &dyn ClientHost, open: MenuScreenOpen<'_>) -> Option<
                 relayout(host, &menu, &on_draw, frame.data);
                 draw(host, &on_draw, frame.data, ctx, frame.origin)
             })
-            .with_click(move |host, frame, right| click(host, &on_click, frame.data, frame.at, right))
+            .with_click(move |host, frame, right| {
+                click(host, &on_click, frame.data, frame.at, right)
+            })
             .with_tooltip(move |host, frame, _slot, lines| {
                 let mut own = Vec::new();
                 tooltip(host, &on_tooltip, frame.data, frame.at, &mut own);
@@ -88,7 +110,9 @@ pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<M
     }
     let (augment_page, mode) = pos.and_then(|pos| page_of(host, pos)).unwrap_or((false, 0));
     let tier = config::tier(host, block);
-    let slots = (0..SLOTS).map(|i| slot_shown(augment_page, mode, tier, i).then_some(slot_at(AT[i]))).collect();
+    let slots = (0..SLOTS)
+        .map(|i| slot_shown(augment_page, mode, tier, i).then_some(slot_at(AT[i])))
+        .collect();
     Some(MenuScreenLayout {
         width: 176.0,
         height: 166.0,
@@ -104,17 +128,35 @@ pub(crate) fn layout(host: &dyn Host, block: &str, pos: Option<Pos>) -> Option<M
 /// The Slot subclasses' isActive, read each frame: when the page or the mode changes (the menu's live data), the
 /// slots it shows move in and the others leave from the next frame.
 fn relayout(host: &dyn ClientHost, menu: &str, block: &str, data: &[i32]) {
-    let (Some(&augment_page), Some(&mode), Some(&tier)) = (data.get(D_AUGMENT_GUI), data.get(D_MODE), data.get(D_TIER)) else { return };
+    let (Some(&augment_page), Some(&mode), Some(&tier)) =
+        (data.get(D_AUGMENT_GUI), data.get(D_MODE), data.get(D_TIER))
+    else {
+        return;
+    };
     if !is_furnace(block) {
         return;
     }
     for (i, at) in AT.iter().enumerate() {
-        let _ = host.set_screen_slot(menu, i, slot_shown(augment_page != 0, mode, tier, i).then_some(*at));
+        let _ = host.set_screen_slot(
+            menu,
+            i,
+            slot_shown(augment_page != 0, mode, tier, i).then_some(*at),
+        );
     }
 }
 
 #[allow(clippy::too_many_arguments)] // `GuiGraphics.blit`'s own arguments.
-fn sprite(draw: &mut dyn DrawContext, texture: &str, o: [f32; 2], x: f32, y: f32, u: f32, v: f32, w: f32, h: f32) {
+fn sprite(
+    draw: &mut dyn DrawContext,
+    texture: &str,
+    o: [f32; 2],
+    x: f32,
+    y: f32,
+    u: f32,
+    v: f32,
+    w: f32,
+    h: f32,
+) {
     if w > 0.0 && h > 0.0 {
         draw.sprite(texture, [u, v, w, h], [o[0] + x, o[1] + y, w, h], None);
     }
@@ -146,13 +188,30 @@ const R_AUGMENT: [f32; 4] = [161.0, 4.0, 11.0, 11.0];
 const R_SPLIT: [f32; 4] = [9.0, 56.0, 14.0, 14.0];
 const R_AUTO_IN: [f32; 4] = [-47.0, 8.0, 14.0, 14.0];
 const R_AUTO_OUT: [f32; 4] = [-29.0, 8.0, 14.0, 14.0];
-const R_RED: [[f32; 4]; 3] = [[-47.0, 66.0, 14.0, 14.0], [-31.0, 66.0, 14.0, 14.0], [-15.0, 66.0, 14.0, 14.0]];
+const R_RED: [[f32; 4]; 3] = [
+    [-47.0, 66.0, 14.0, 14.0],
+    [-31.0, 66.0, 14.0, 14.0],
+    [-15.0, 66.0, 14.0, 14.0],
+];
 // Bottom, top, front, back, left, right.
-const R_SIDES: [[f32; 4]; 6] =
-    [[-32.0, 51.0, 10.0, 10.0], [-32.0, 27.0, 10.0, 10.0], [-32.0, 39.0, 10.0, 10.0], [-20.0, 51.0, 10.0, 10.0], [-44.0, 39.0, 10.0, 10.0], [-20.0, 39.0, 10.0, 10.0]];
+const R_SIDES: [[f32; 4]; 6] = [
+    [-32.0, 51.0, 10.0, 10.0],
+    [-32.0, 27.0, 10.0, 10.0],
+    [-32.0, 39.0, 10.0, 10.0],
+    [-20.0, 51.0, 10.0, 10.0],
+    [-44.0, 39.0, 10.0, 10.0],
+    [-20.0, 39.0, 10.0, 10.0],
+];
 
 /// FurnaceGuiButton.render with a hover and an enabled texture part (the same part, as the Java buttons have).
-fn button(draw: &mut dyn DrawContext, o: [f32; 2], r: [f32; 4], mouse: [f32; 2], hover: Option<[f32; 2]>, enabled: Option<[f32; 2]>) {
+fn button(
+    draw: &mut dyn DrawContext,
+    o: [f32; 2],
+    r: [f32; 4],
+    mouse: [f32; 2],
+    hover: Option<[f32; 2]>,
+    enabled: Option<[f32; 2]>,
+) {
     if inside(r, mouse)
         && let Some(uv) = hover
     {
@@ -164,7 +223,11 @@ fn button(draw: &mut dyn DrawContext, o: [f32; 2], r: [f32; 4], mouse: [f32; 2],
 }
 
 fn scaled(value: i32, total: i32, pixels: i32) -> i32 {
-    if total > 0 && value > 0 { (i64::from(value) * i64::from(pixels) / i64::from(total)) as i32 } else { 0 }
+    if total > 0 && value > 0 {
+        (i64::from(value) * i64::from(pixels) / i64::from(total)) as i32
+    } else {
+        0
+    }
 }
 
 /// The furnace's name as its screen shows it: the Rainbow Furnace's in colours that change every 20 frames.
@@ -178,11 +241,16 @@ fn title(host: &dyn ClientHost, block: &str) -> Vec<(String, u32)> {
         return vec![(text, 0)];
     }
     // ItemMillionFurnace.getIDRandom over ChatFormatting: red, yellow, green, aqua, blue, light purple.
-    const COLOURS: [u32; 6] = [0xFFFF5555, 0xFFFFFF55, 0xFF55FF55, 0xFF55FFFF, 0xFF5555FF, 0xFFFF55FF];
+    const COLOURS: [u32; 6] = [
+        0xFFFF5555, 0xFFFFFF55, 0xFF55FF55, 0xFF55FFFF, 0xFF5555FF, 0xFFFF55FF,
+    ];
     let seed = with_state(|s| {
         s.title_timer += 1;
         if s.title_timer % 20 == 0 || s.title_seed == 0 {
-            s.title_seed = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(1, |d| d.subsec_nanos()) as u64) | 1;
+            s.title_seed = (std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(1, |d| d.subsec_nanos()) as u64)
+                | 1;
         }
         s.title_seed
     });
@@ -197,7 +265,13 @@ fn title(host: &dyn ClientHost, block: &str) -> Vec<(String, u32)> {
         .collect()
 }
 
-pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut dyn DrawContext, origin: [f32; 2]) {
+pub(crate) fn draw(
+    host: &dyn ClientHost,
+    block: &str,
+    data: &[i32],
+    draw: &mut dyn DrawContext,
+    origin: [f32; 2],
+) {
     let o = origin;
     let mouse = with_state(|s| s.mouse);
     if is_heater(block) {
@@ -227,7 +301,17 @@ pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut 
             0 => {
                 if data[D_BURN] > 0 {
                     let i = scaled(data[D_BURN], data[D_BURN_TOTAL].max(1), 13) as f32;
-                    sprite(draw, texture, o, 56.0, 36.0 + 12.0 - i, 176.0, 12.0 - i, 14.0, i + 1.0);
+                    sprite(
+                        draw,
+                        texture,
+                        o,
+                        56.0,
+                        36.0 + 12.0 - i,
+                        176.0,
+                        12.0 - i,
+                        14.0,
+                        i + 1.0,
+                    );
                 }
                 let i = scaled(data[D_COOK], data[D_COOK_TOTAL], 24) as f32;
                 sprite(draw, texture, o, 79.0, 34.0, 176.0, 14.0, i + 1.0, 16.0);
@@ -235,10 +319,34 @@ pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut 
             2 => {
                 if data[D_GEN] > 0 {
                     let i = scaled(data[D_GEN], data[D_GEN_TOTAL].max(1), 13) as f32;
-                    sprite(draw, GENERATOR, o, 56.0, 23.0 + 12.0 - i, 176.0, 12.0 - i, 14.0, i + 1.0);
+                    sprite(
+                        draw,
+                        GENERATOR,
+                        o,
+                        56.0,
+                        23.0 + 12.0 - i,
+                        176.0,
+                        12.0 - i,
+                        14.0,
+                        i + 1.0,
+                    );
                 }
-                let h = scaled(wide(data, D_ENERGY, D_ENERGY_HI), wide(data, D_CAPACITY, D_CAPACITY_HI), 42) as f32;
-                sprite(draw, ENERGY, o, 109.0, 22.0 + 42.0 - h, 0.0, 42.0 - h, 14.0, h);
+                let h = scaled(
+                    wide(data, D_ENERGY, D_ENERGY_HI),
+                    wide(data, D_CAPACITY, D_CAPACITY_HI),
+                    42,
+                ) as f32;
+                sprite(
+                    draw,
+                    ENERGY,
+                    o,
+                    109.0,
+                    22.0 + 42.0 - h,
+                    0.0,
+                    42.0 - h,
+                    14.0,
+                    h,
+                );
             }
             _ => {
                 if tier > 0 {
@@ -249,16 +357,37 @@ pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut 
                         sprite(draw, FACTORY, o, 132.0, 5.0, 176.0, 64.0, 18.0, 67.0);
                     }
                 }
-                let h = scaled(wide(data, D_ENERGY, D_ENERGY_HI), wide(data, D_CAPACITY, D_CAPACITY_HI), 42) as f32;
+                let h = scaled(
+                    wide(data, D_ENERGY, D_ENERGY_HI),
+                    wide(data, D_CAPACITY, D_CAPACITY_HI),
+                    42,
+                ) as f32;
                 sprite(draw, ENERGY, o, 9.0, 7.0 + 42.0 - h, 0.0, 42.0 - h, 14.0, h);
                 for j in 0..6 {
                     let i = scaled(data[D_FACTORY_COOK + j], data[D_FACTORY_TOTAL + j], 22) as f32;
-                    sprite(draw, FACTORY, o, 29.0 + 21.0 * j as f32, 27.0, 176.0, 0.0, 15.0, i + 1.0);
+                    sprite(
+                        draw,
+                        FACTORY,
+                        o,
+                        29.0 + 21.0 * j as f32,
+                        27.0,
+                        176.0,
+                        0.0,
+                        15.0,
+                        i + 1.0,
+                    );
                 }
             }
         }
         if m == 1 {
-            button(draw, o, R_SPLIT, mouse, Some([70.0, 132.0]), (data[D_SPLIT] != 0).then_some([70.0, 132.0]));
+            button(
+                draw,
+                o,
+                R_SPLIT,
+                mouse,
+                Some([70.0, 132.0]),
+                (data[D_SPLIT] != 0).then_some([70.0, 132.0]),
+            );
         }
     }
     // addInventoryButtons: the config tab beside the panel.
@@ -266,12 +395,33 @@ pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut 
         sprite(draw, WIDGETS, o, -13.0, 2.0, 0.0, 0.0, 12.0, 13.0);
     } else {
         sprite(draw, WIDGETS, o, -56.0, 0.0, 0.0, 13.0, 60.0, 91.0);
-        button(draw, o, R_AUTO_IN, mouse, Some([0.0, 132.0]), (data[D_AUTO_IN] != 0).then_some([0.0, 132.0]));
-        button(draw, o, R_AUTO_OUT, mouse, Some([14.0, 132.0]), (data[D_AUTO_OUT] != 0).then_some([14.0, 132.0]));
+        button(
+            draw,
+            o,
+            R_AUTO_IN,
+            mouse,
+            Some([0.0, 132.0]),
+            (data[D_AUTO_IN] != 0).then_some([0.0, 132.0]),
+        );
+        button(
+            draw,
+            o,
+            R_AUTO_OUT,
+            mouse,
+            Some([14.0, 132.0]),
+            (data[D_AUTO_OUT] != 0).then_some([14.0, 132.0]),
+        );
         for (i, r) in R_SIDES.iter().enumerate() {
             let s = data[D_SIDES + i];
             if s != 0 {
-                button(draw, o, *r, mouse, None, Some([(10 * s - 10) as f32, 104.0]));
+                button(
+                    draw,
+                    o,
+                    *r,
+                    mouse,
+                    None,
+                    Some([(10 * s - 10) as f32, 104.0]),
+                );
             }
         }
         if !augment_page {
@@ -316,7 +466,14 @@ pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut 
         // addRedstoneButtons.
         for (i, r) in R_RED.iter().enumerate() {
             let uv = [28.0 + 14.0 * i as f32, 132.0];
-            button(draw, o, *r, mouse, Some(uv), (data[D_REDSTONE] == i as i32).then_some(uv));
+            button(
+                draw,
+                o,
+                *r,
+                mouse,
+                Some(uv),
+                (data[D_REDSTONE] == i as i32).then_some(uv),
+            );
         }
     }
     // extractLabels: the title (above the panel for a factory and the Rainbow Furnace), the inventory's label.
@@ -330,23 +487,72 @@ pub(crate) fn draw(host: &dyn ClientHost, block: &str, data: &[i32], draw: &mut 
     } else {
         (88.0 - width / 2.0).floor()
     };
-    let (y, colour) = if above { (-10.0, 0xFFFF_FFFF) } else { (6.0, 0xFF40_4040) };
+    let (y, colour) = if above {
+        (-10.0, 0xFFFF_FFFF)
+    } else {
+        (6.0, 0xFF40_4040)
+    };
     let mut cx = o[0] + x;
     for (text, c) in &parts {
-        draw.text(text, [cx, o[1] + y], if *c == 0 { colour } else { *c }, false);
+        draw.text(
+            text,
+            [cx, o[1] + y],
+            if *c == 0 { colour } else { *c },
+            false,
+        );
         cx += draw.text_width(text);
     }
-    draw.text(&lang(host, "container.inventory", "Inventory"), [o[0] + 8.0, o[1] + 73.0], 0xFF40_4040, false);
+    draw.text(
+        &lang(host, "container.inventory", "Inventory"),
+        [o[0] + 8.0, o[1] + 73.0],
+        0xFF40_4040,
+        false,
+    );
 }
 
-fn draw_heater(host: &dyn ClientHost, data: &[i32], draw: &mut dyn DrawContext, o: [f32; 2], _mouse: [f32; 2]) {
-    sprite(draw, "ironfurnaces:gui/heater", o, 0.0, 0.0, 0.0, 0.0, 176.0, 166.0);
+fn draw_heater(
+    host: &dyn ClientHost,
+    data: &[i32],
+    draw: &mut dyn DrawContext,
+    o: [f32; 2],
+    _mouse: [f32; 2],
+) {
+    sprite(
+        draw,
+        "ironfurnaces:gui/heater",
+        o,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        176.0,
+        166.0,
+    );
     if data.len() >= 2 && data[1] > 0 {
         let i = scaled(data[0], data[1], 42) as f32;
-        sprite(draw, "ironfurnaces:gui/heater", o, 67.0, 63.0, 176.0, 0.0, i + 1.0, 14.0);
+        sprite(
+            draw,
+            "ironfurnaces:gui/heater",
+            o,
+            67.0,
+            63.0,
+            176.0,
+            0.0,
+            i + 1.0,
+            14.0,
+        );
     }
-    draw.text(&lang(host, "container.inventory", "Inventory"), [o[0] + 8.0, o[1] + 72.0], 0xFF40_4040, false);
-    let name = lang(host, "container.ironfurnaces.wireless_energy_heater", "Wireless Heater");
+    draw.text(
+        &lang(host, "container.inventory", "Inventory"),
+        [o[0] + 8.0, o[1] + 72.0],
+        0xFF40_4040,
+        false,
+    );
+    let name = lang(
+        host,
+        "container.ironfurnaces.wireless_energy_heater",
+        "Wireless Heater",
+    );
     draw.text(&name, [o[0] + 49.0, o[1] + 6.0], 0xFF40_4040, false);
 }
 
@@ -356,12 +562,23 @@ fn shift(host: &dyn ClientHost) -> bool {
 
 /// SimpleSoundInstance.forUI(UI_BUTTON_CLICK, pitch, 0.3).
 fn click_sound(host: &dyn ClientHost, pitch: f32) {
-    let _ = host.play_local_sound(&SoundPlay::ui("minecraft:ui.button.click").with_pitch(pitch).with_volume(0.3), 0);
+    let _ = host.play_local_sound(
+        &SoundPlay::ui("minecraft:ui.button.click")
+            .with_pitch(pitch)
+            .with_volume(0.3),
+        0,
+    );
 }
 
 /// mouseClicked: the button the click presses, if any; the config tab's opening and closing stay on the client
 /// (ClientShowConfig).
-pub(crate) fn click(host: &dyn ClientHost, block: &str, data: &[i32], at: [f32; 2], right: bool) -> Option<i32> {
+pub(crate) fn click(
+    host: &dyn ClientHost,
+    block: &str,
+    data: &[i32],
+    at: [f32; 2],
+    right: bool,
+) -> Option<i32> {
     if !is_furnace(block) || data.len() < DATA_SLOTS {
         return None;
     }
@@ -432,7 +649,11 @@ fn side_words(host: &dyn ClientHost, setting: i32) -> String {
     match setting {
         1 => lang(host, "tooltip.ironfurnaces.gui_input", "Input"),
         2 => lang(host, "tooltip.ironfurnaces.gui_output", "Output"),
-        3 => lang(host, "tooltip.ironfurnaces.gui_input_output", "Input/Output"),
+        3 => lang(
+            host,
+            "tooltip.ironfurnaces.gui_input_output",
+            "Input/Output",
+        ),
         4 => lang(host, "tooltip.ironfurnaces.gui_fuel", "Fuel Input/Eject"),
         _ => lang(host, "tooltip.ironfurnaces.gui_none", "NONE"),
     }
@@ -456,7 +677,13 @@ pub(crate) fn grouped(n: i32) -> String {
 }
 
 /// addTooltips: the lines under the pointer (also where the hover highlights are drawn from).
-pub(crate) fn tooltip(host: &dyn ClientHost, block: &str, data: &[i32], at: [f32; 2], lines: &mut Vec<String>) {
+pub(crate) fn tooltip(
+    host: &dyn ClientHost,
+    block: &str,
+    data: &[i32],
+    at: [f32; 2],
+    lines: &mut Vec<String>,
+) {
     with_state(|s| s.mouse = at);
     if is_heater(block) {
         if data.len() >= 2 && at[0] >= 68.0 && at[0] <= 108.0 && at[1] >= 64.0 && at[1] <= 76.0 {
@@ -485,7 +712,10 @@ pub(crate) fn tooltip(host: &dyn ClientHost, block: &str, data: &[i32], at: [f32
     if let Some(bar) = bar
         && inside(bar, at)
     {
-        lines.push(energy_text(wide(data, D_ENERGY, D_ENERGY_HI), wide(data, D_CAPACITY, D_CAPACITY_HI)));
+        lines.push(energy_text(
+            wide(data, D_ENERGY, D_ENERGY_HI),
+            wide(data, D_CAPACITY, D_CAPACITY_HI),
+        ));
     }
     if m == 1 && !augment_page && inside(R_SPLIT, at) {
         lines.push("Auto Split".to_owned());
@@ -502,15 +732,29 @@ pub(crate) fn tooltip(host: &dyn ClientHost, block: &str, data: &[i32], at: [f32
     }
     let on = |v: i32| if v != 0 { "ON" } else { "OFF" }.to_owned();
     if inside(R_AUTO_IN, at) {
-        lines.push(lang(host, "tooltip.ironfurnaces.gui_auto_input", "Auto Input"));
+        lines.push(lang(
+            host,
+            "tooltip.ironfurnaces.gui_auto_input",
+            "Auto Input",
+        ));
         lines.push(on(data[D_AUTO_IN]));
     }
     if inside(R_AUTO_OUT, at) {
-        lines.push(lang(host, "tooltip.ironfurnaces.gui_auto_output", "Auto Output"));
+        lines.push(lang(
+            host,
+            "tooltip.ironfurnaces.gui_auto_output",
+            "Auto Output",
+        ));
         lines.push(on(data[D_AUTO_OUT]));
     }
-    const NAMES: [(&str, &str); 6] =
-        [("gui_bottom", "Bottom"), ("gui_top", "Top"), ("gui_front", "Front"), ("gui_back", "Back"), ("gui_left", "Left"), ("gui_right", "Right")];
+    const NAMES: [(&str, &str); 6] = [
+        ("gui_bottom", "Bottom"),
+        ("gui_top", "Top"),
+        ("gui_front", "Front"),
+        ("gui_back", "Back"),
+        ("gui_left", "Left"),
+        ("gui_right", "Right"),
+    ];
     for (i, r) in R_SIDES.iter().enumerate() {
         if !inside(*r, at) {
             continue;
@@ -518,24 +762,48 @@ pub(crate) fn tooltip(host: &dyn ClientHost, block: &str, data: &[i32], at: [f32
         if i == 2 && shift(host) {
             lines.push(lang(host, "tooltip.ironfurnaces.gui_reset", "Reset All"));
         } else {
-            lines.push(lang(host, &format!("tooltip.ironfurnaces.{}", NAMES[i].0), NAMES[i].1));
+            lines.push(lang(
+                host,
+                &format!("tooltip.ironfurnaces.{}", NAMES[i].0),
+                NAMES[i].1,
+            ));
             lines.push(side_words(host, data[D_SIDES + i]));
         }
     }
-    const RED: [(&str, &str); 3] =
-        [("gui_redstone_ignored", "Redstone Ignored"), ("gui_redstone_low", "Redstone Low"), ("gui_redstone_high", "Redstone High")];
+    const RED: [(&str, &str); 3] = [
+        ("gui_redstone_ignored", "Redstone Ignored"),
+        ("gui_redstone_low", "Redstone Low"),
+        ("gui_redstone_high", "Redstone High"),
+    ];
     for (i, r) in R_RED.iter().enumerate() {
         if inside(*r, at) {
-            lines.push(lang(host, &format!("tooltip.ironfurnaces.{}", RED[i].0), RED[i].1));
+            lines.push(lang(
+                host,
+                &format!("tooltip.ironfurnaces.{}", RED[i].0),
+                RED[i].1,
+            ));
         }
     }
 }
 
 /// The server's half of a button: PacketSplitFurnaceSetting, PacketAugmentGUIFurnaceSetting, PacketAutoIOFurnaceSetting,
 /// PacketRedstoneFurnaceSetting and PacketFurnaceSettings. Only the button ids the screen sends are taken.
-pub(crate) fn menu_button(host: &mut dyn ServerHost, player: u128, pos: Pos, id: i32, nbt: &mut Compound) {
-    let Some(level) = host.player(player).and_then(|p| p.level(host)) else { return };
-    let Some(block) = level.block(host, pos).and_then(|b| b.id(host).map(str::to_owned)) else { return };
+pub(crate) fn menu_button(
+    host: &mut dyn ServerHost,
+    player: u128,
+    pos: Pos,
+    id: i32,
+    nbt: &mut Compound,
+) {
+    let Some(level) = host.player(player).and_then(|p| p.level(host)) else {
+        return;
+    };
+    let Some(block) = level
+        .block(host, pos)
+        .and_then(|b| b.id(host).map(str::to_owned))
+    else {
+        return;
+    };
     if !is_furnace(&block) {
         return;
     }
