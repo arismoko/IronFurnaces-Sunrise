@@ -47,7 +47,9 @@ pub(crate) fn int_array(nbt: &Compound, key: &str, len: usize) -> Vec<i32> {
 }
 
 pub(crate) fn set_int_array(nbt: &mut Compound, key: &str, values: Vec<i32>) {
-    if int_array(nbt, key, values.len()) != values || !matches!(nbt.get(&java(key)), Some(Tag::IntArray(_))) {
+    if int_array(nbt, key, values.len()) != values
+        || !matches!(nbt.get(&java(key)), Some(Tag::IntArray(_)))
+    {
         nbt.insert(java(key), Tag::IntArray(values));
     }
 }
@@ -55,7 +57,12 @@ pub(crate) fn set_int_array(nbt: &mut Compound, key: &str, values: Vec<i32>) {
 /// Item keys by id, looked up once (keys stay for the process).
 fn item_ids(host: &dyn Host) -> &'static HashMap<String, ItemKey> {
     static IDS: OnceLock<HashMap<String, ItemKey>> = OnceLock::new();
-    IDS.get_or_init(|| host.item_keys().into_iter().filter_map(|k| Some((k.id(host)?.to_owned(), k))).collect())
+    IDS.get_or_init(|| {
+        host.item_keys()
+            .into_iter()
+            .filter_map(|k| Some((k.id(host)?.to_owned(), k)))
+            .collect()
+    })
 }
 
 pub(crate) fn item_key(host: &dyn Host, id: &str) -> Option<ItemKey> {
@@ -93,15 +100,28 @@ pub(crate) fn shrink(slot: &mut Option<ItemStack>, by: u32) {
     }
 }
 
-pub(crate) const DIRECTIONS: [Direction; 6] =
-    [Direction::Down, Direction::Up, Direction::North, Direction::South, Direction::West, Direction::East];
+pub(crate) const DIRECTIONS: [Direction; 6] = [
+    Direction::Down,
+    Direction::Up,
+    Direction::North,
+    Direction::South,
+    Direction::West,
+    Direction::East,
+];
 
 pub(crate) fn dir_index(d: Direction) -> usize {
     DIRECTIONS.iter().position(|x| *x == d).unwrap_or(0)
 }
 
 pub(crate) fn step(i: usize) -> Pos {
-    [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]][i]
+    [
+        [0, -1, 0],
+        [0, 1, 0],
+        [0, 0, -1],
+        [0, 0, 1],
+        [-1, 0, 0],
+        [1, 0, 0],
+    ][i]
 }
 
 pub(crate) fn opposite(i: usize) -> usize {
@@ -114,7 +134,11 @@ pub(crate) fn offset(pos: Pos, dir: usize) -> Pos {
 }
 
 pub(crate) fn centre(pos: Pos) -> [f64; 3] {
-    [f64::from(pos[0]) + 0.5, f64::from(pos[1]) + 0.5, f64::from(pos[2]) + 0.5]
+    [
+        f64::from(pos[0]) + 0.5,
+        f64::from(pos[1]) + 0.5,
+        f64::from(pos[2]) + 0.5,
+    ]
 }
 
 pub(crate) fn lang(host: &dyn ClientHost, key: &str, english: &str) -> String {
@@ -123,7 +147,11 @@ pub(crate) fn lang(host: &dyn ClientHost, key: &str, english: &str) -> String {
 
 /// A compound in the stack's `minecraft:custom_data` component.
 pub(crate) fn custom_data(stack: &ItemStack) -> Option<Compound> {
-    match stack.components()?.as_nbt().get(&java("minecraft:custom_data")) {
+    match stack
+        .components()?
+        .as_nbt()
+        .get(&java("minecraft:custom_data"))
+    {
         Some(Tag::Compound(c)) => Some(c.clone()),
         _ => None,
     }
@@ -135,6 +163,13 @@ pub(crate) fn set_custom_data(stack: &mut ItemStack, data: Compound) {
     let _ = stack.set_components(patch);
 }
 
+/// Sends the block entity at `pos` to the clients that see it (`sendBlockUpdated`).
+pub(crate) fn sync_at(host: &mut dyn ServerHost, level: LevelRef, pos: Pos) {
+    if let Some(entity) = host.block_entity(level, pos) {
+        let _ = entity.sync(host);
+    }
+}
+
 pub(crate) fn sneaking(host: &dyn Host, player: PlayerRef) -> bool {
     let entity = player.entity();
     entity.is_shift_key_down(host).unwrap_or(false) || entity.is_crouching(host).unwrap_or(false)
@@ -142,7 +177,10 @@ pub(crate) fn sneaking(host: &dyn Host, player: PlayerRef) -> bool {
 
 /// A slot of a screen at `position` (GUI pixels from the screen's corner), with no empty-slot icon.
 pub(crate) fn slot_at(position: [f32; 2]) -> ScreenSlot {
-    ScreenSlot { position, no_item_icon: None }
+    ScreenSlot {
+        position,
+        no_item_icon: None,
+    }
 }
 
 /// A block entity tick on an owned copy of its fields: the saved compound, the item slots and the menu data, as the
@@ -153,7 +191,9 @@ pub(crate) fn tick_on_fields(
     subject: &mut BlockEntityScope<'_>,
     tick: impl FnOnce(&mut dyn ServerHost, Pos, &mut ModBlockEntityFields),
 ) {
-    let Some((handle, pos, before)) = subject.with_view(|view| (view.handle(), view.position(), fields_of(&view))) else {
+    let Some((handle, pos, before)) =
+        subject.with_view(|view| (view.handle(), view.position(), fields_of(&view)))
+    else {
         return;
     };
     let mut after = before.clone();
@@ -170,13 +210,19 @@ pub(crate) fn tick_on_fields(
 pub(crate) fn fields_of(view: &BlockEntityView<'_>) -> ModBlockEntityFields {
     ModBlockEntityFields {
         nbt: view.nbt().clone(),
-        items: (0..view.item_slots() as u32).map(|i| view.item_slot(i).and_then(|s| s.to_owned())).collect(),
+        items: (0..view.item_slots() as u32)
+            .map(|i| view.item_slot(i).and_then(|s| s.to_owned()))
+            .collect(),
         data: view.data_slots().to_vec(),
     }
 }
 
 /// Writes what changed from `before` to `after` into the view: true when anything was written.
-pub(crate) fn write_fields(view: &mut BlockEntityView<'_>, before: &ModBlockEntityFields, after: &ModBlockEntityFields) -> bool {
+pub(crate) fn write_fields(
+    view: &mut BlockEntityView<'_>,
+    before: &ModBlockEntityFields,
+    after: &ModBlockEntityFields,
+) -> bool {
     let mut wrote = false;
     for (key, value) in &after.nbt {
         if before.nbt.get(key) != Some(value) {
@@ -190,7 +236,9 @@ pub(crate) fn write_fields(view: &mut BlockEntityView<'_>, before: &ModBlockEnti
     }
     for (slot, stack) in after.items.iter().enumerate().take(view.item_slots()) {
         if before.items.get(slot) != Some(stack) {
-            wrote |= view.set_item_slot(slot as u32, stack.clone()).unwrap_or(false);
+            wrote |= view
+                .set_item_slot(slot as u32, stack.clone())
+                .unwrap_or(false);
         }
     }
     if after.data != before.data {

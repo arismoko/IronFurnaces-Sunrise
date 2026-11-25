@@ -19,8 +19,18 @@ fn read(host: &dyn Host, at: &BlockSide) -> Option<(String, BlockEntityRef, Fiel
     }
     let entity = host.block_entity(at.level, at.pos)?;
     let nbt = entity.data(host)?;
-    let items = (0..SLOTS as u32).map(|i| entity.item_slot(host, i).ok().flatten()).collect();
-    Some((block, entity, Fields { nbt, items, data: Vec::new() }))
+    let items = (0..SLOTS as u32)
+        .map(|i| entity.item_slot(host, i).ok().flatten())
+        .collect();
+    Some((
+        block,
+        entity,
+        Fields {
+            nbt,
+            items,
+            data: Vec::new(),
+        },
+    ))
 }
 
 pub(crate) struct FurnaceItems(pub BlockSide);
@@ -33,7 +43,9 @@ impl FurnaceItems {
     /// The container slot behind handler index `index`.
     fn slot(&self, host: &dyn Host, e: &Fields, index: usize) -> Option<usize> {
         match self.setting(e) {
-            Some(setting) => furnace::slots_for_face(host, e, setting).get(index).copied(),
+            Some(setting) => furnace::slots_for_face(host, e, setting)
+                .get(index)
+                .copied(),
             None => (index < SLOTS).then_some(index),
         }
     }
@@ -41,7 +53,9 @@ impl FurnaceItems {
 
 impl ResourceHandler<ItemResource> for FurnaceItems {
     fn size(&self, host: &mut dyn ServerHost) -> usize {
-        let Some((_, _, e)) = read(host, &self.0) else { return 0 };
+        let Some((_, _, e)) = read(host, &self.0) else {
+            return 0;
+        };
         match self.setting(&e) {
             Some(setting) => furnace::slots_for_face(host, &e, setting).len(),
             None => SLOTS,
@@ -55,13 +69,26 @@ impl ResourceHandler<ItemResource> for FurnaceItems {
     }
 
     fn amount(&self, host: &mut dyn ServerHost, index: usize) -> u32 {
-        let Some((_, _, e)) = read(host, &self.0) else { return 0 };
-        self.slot(host, &e, index).and_then(|s| e.items[s].as_ref()).map_or(0, |s| s.count())
+        let Some((_, _, e)) = read(host, &self.0) else {
+            return 0;
+        };
+        self.slot(host, &e, index)
+            .and_then(|s| e.items[s].as_ref())
+            .map_or(0, |s| s.count())
     }
 
-    fn capacity(&self, host: &mut dyn ServerHost, index: usize, resource: Option<&ItemResource>) -> u32 {
-        let Some((block, _, e)) = read(host, &self.0) else { return 0 };
-        let Some(slot) = self.slot(host, &e, index) else { return 0 };
+    fn capacity(
+        &self,
+        host: &mut dyn ServerHost,
+        index: usize,
+        resource: Option<&ItemResource>,
+    ) -> u32 {
+        let Some((block, _, e)) = read(host, &self.0) else {
+            return 0;
+        };
+        let Some(slot) = self.slot(host, &e, index) else {
+            return 0;
+        };
         // The general limit: the container's (`Container.getMaxStackSize`).
         let Some(resource) = resource else { return 64 };
         if !furnace::valid_for_slot(host, self.0.level, &block, &e, slot, resource.as_stack()) {
@@ -70,9 +97,20 @@ impl ResourceHandler<ItemResource> for FurnaceItems {
         max_stack(host, resource.as_stack())
     }
 
-    fn insert_at(&self, host: &mut dyn ServerHost, tx: &TransactionContext, index: usize, resource: &ItemResource, amount: u32) -> Result<u32, TransactionError<Overanswered>> {
-        let Some((block, entity, e)) = read(host, &self.0) else { return Ok(0) };
-        let Some(slot) = self.slot(host, &e, index) else { return Ok(0) };
+    fn insert_at(
+        &self,
+        host: &mut dyn ServerHost,
+        tx: &TransactionContext,
+        index: usize,
+        resource: &ItemResource,
+        amount: u32,
+    ) -> Result<u32, TransactionError<Overanswered>> {
+        let Some((block, entity, e)) = read(host, &self.0) else {
+            return Ok(0);
+        };
+        let Some(slot) = self.slot(host, &e, index) else {
+            return Ok(0);
+        };
         let stack = resource.as_stack();
         if amount == 0 || !furnace::valid_for_slot(host, self.0.level, &block, &e, slot, stack) {
             return Ok(0);
@@ -87,17 +125,32 @@ impl ResourceHandler<ItemResource> for FurnaceItems {
         if n == 0 {
             return Ok(0);
         }
-        let Some(next) = resource.to_stack(have + n) else { return Ok(0) };
+        let Some(next) = resource.to_stack(have + n) else {
+            return Ok(0);
+        };
         match entity.set_item_slot(host, tx, slot as u32, Some(next)) {
             Ok(true) => Ok(n),
             _ => Ok(0),
         }
     }
 
-    fn extract_at(&self, host: &mut dyn ServerHost, tx: &TransactionContext, index: usize, resource: &ItemResource, amount: u32) -> Result<u32, TransactionError<Overanswered>> {
-        let Some((_, entity, e)) = read(host, &self.0) else { return Ok(0) };
-        let Some(slot) = self.slot(host, &e, index) else { return Ok(0) };
-        let Some(held) = e.items[slot].as_ref() else { return Ok(0) };
+    fn extract_at(
+        &self,
+        host: &mut dyn ServerHost,
+        tx: &TransactionContext,
+        index: usize,
+        resource: &ItemResource,
+        amount: u32,
+    ) -> Result<u32, TransactionError<Overanswered>> {
+        let Some((_, entity, e)) = read(host, &self.0) else {
+            return Ok(0);
+        };
+        let Some(slot) = self.slot(host, &e, index) else {
+            return Ok(0);
+        };
+        let Some(held) = e.items[slot].as_ref() else {
+            return Ok(0);
+        };
         if !resource.matches(held) {
             return Ok(0);
         }
@@ -137,31 +190,58 @@ impl FurnaceEnergy {
 
 impl EnergyHandler for FurnaceEnergy {
     fn amount(&self, host: &mut dyn ServerHost) -> u32 {
-        self.read(host).map_or(0, |(_, _, stored, _)| stored.max(0) as u32)
+        self.read(host)
+            .map_or(0, |(_, _, stored, _)| stored.max(0) as u32)
     }
 
     fn capacity(&self, host: &mut dyn ServerHost) -> u32 {
-        self.read(host).map_or(0, |(block, ..)| config::capacity(host, &block).max(0) as u32)
+        self.read(host).map_or(0, |(block, ..)| {
+            config::capacity(host, &block).max(0) as u32
+        })
     }
 
-    fn insert(&self, host: &mut dyn ServerHost, tx: &TransactionContext, amount: u32) -> Result<u32, TransactionError<Overanswered>> {
+    fn insert(
+        &self,
+        host: &mut dyn ServerHost,
+        tx: &TransactionContext,
+        amount: u32,
+    ) -> Result<u32, TransactionError<Overanswered>> {
         let _ = tx;
-        let Some((block, entity, stored, mode)) = self.read(host) else { return Ok(0) };
+        let Some((block, entity, stored, mode)) = self.read(host) else {
+            return Ok(0);
+        };
         if mode != 1 {
             return Ok(0);
         }
         let capacity = config::capacity(host, &block);
-        let n = (capacity - stored).max(0).min(amount.min(i32::MAX as u32) as i32);
-        Ok(if n > 0 && Self::store(host, entity, stored + n) { n as u32 } else { 0 })
+        let n = (capacity - stored)
+            .max(0)
+            .min(amount.min(i32::MAX as u32) as i32);
+        Ok(if n > 0 && Self::store(host, entity, stored + n) {
+            n as u32
+        } else {
+            0
+        })
     }
 
-    fn extract(&self, host: &mut dyn ServerHost, tx: &TransactionContext, amount: u32) -> Result<u32, TransactionError<Overanswered>> {
+    fn extract(
+        &self,
+        host: &mut dyn ServerHost,
+        tx: &TransactionContext,
+        amount: u32,
+    ) -> Result<u32, TransactionError<Overanswered>> {
         let _ = tx;
-        let Some((_, entity, stored, mode)) = self.read(host) else { return Ok(0) };
+        let Some((_, entity, stored, mode)) = self.read(host) else {
+            return Ok(0);
+        };
         if mode != 2 {
             return Ok(0);
         }
         let n = stored.max(0).min(amount.min(i32::MAX as u32) as i32);
-        Ok(if n > 0 && Self::store(host, entity, stored - n) { n as u32 } else { 0 })
+        Ok(if n > 0 && Self::store(host, entity, stored - n) {
+            n as u32
+        } else {
+            0
+        })
     }
 }

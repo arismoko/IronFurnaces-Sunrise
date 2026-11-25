@@ -68,12 +68,14 @@ fn values(host: &dyn Host) -> &'static HashMap<String, i32> {
 }
 
 fn read(host: &dyn Host) -> String {
-    let files = host.config_files();
-    let Ok(path) = ConfigPath::new(FILE) else { return String::new() };
-    match files.read(&path) {
+    let path = host.config_dir().join(FILE);
+    match std::fs::read(&path) {
         Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
         Err(_) => {
-            let _ = files.write(&path, DEFAULT.as_bytes());
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let _ = std::fs::write(&path, DEFAULT);
             String::new()
         }
     }
@@ -82,7 +84,9 @@ fn read(host: &dyn Host) -> String {
 pub(crate) fn parse(text: &str) -> HashMap<String, i32> {
     let mut out = HashMap::new();
     for line in text.lines() {
-        let Some((k, v)) = line.split_once('=') else { continue };
+        let Some((k, v)) = line.split_once('=') else {
+            continue;
+        };
         let v = v.trim();
         let n = match v {
             "true" => 1,
@@ -104,7 +108,11 @@ pub(crate) fn cfg(host: &dyn Host, key: &str) -> i32 {
 /// A furnace block's config name (the Rainbow Furnace's block is `million_furnace`).
 pub(crate) fn name_of(block: &str) -> &str {
     let name = block.strip_prefix("ironfurnaces:").unwrap_or(block);
-    if name == "million_furnace" { "rainbow_furnace" } else { name }
+    if name == "million_furnace" {
+        "rainbow_furnace"
+    } else {
+        name
+    }
 }
 
 pub(crate) fn speed(host: &dyn Host, block: &str) -> i32 {
@@ -132,7 +140,9 @@ pub(crate) fn capacity(host: &dyn Host, block: &str) -> i32 {
 pub(crate) fn smelt_mult(host: &dyn Host, block: &str) -> i32 {
     match block {
         "ironfurnaces:million_furnace" => 64,
-        "ironfurnaces:allthemodium_furnace" | "ironfurnaces:vibranium_furnace" | "ironfurnaces:unobtainium_furnace" => {
+        "ironfurnaces:allthemodium_furnace"
+        | "ironfurnaces:vibranium_furnace"
+        | "ironfurnaces:unobtainium_furnace" => {
             cfg(host, &format!("{}.mult", name_of(block))).clamp(1, 64)
         }
         _ => 1,
