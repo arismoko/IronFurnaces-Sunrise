@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 //! Iron Furnaces (Qelifern, XenoMustache, Astryxion; Apache-2.0) for Sunrise: thirteen
 //! furnaces with upgrades and augments, factories and generators, side settings, auto input and output, redstone
 //! modes, the Wireless Heat Transmitter and Receiver, the Settings Linker, the Rainbow Furnace, and the W guide.
@@ -132,14 +133,13 @@ impl Hooks for Mod {
             "ironfurnaces:generator_blasting",
         );
         let furnaces = r.block_entity_type("furnace").blocks(&FURNACES).build();
-        r.block_entity_part(&furnaces, Furnace)
-            .expect("ironfurnaces:furnace is a native block entity type");
+        // Both are native block entity types, so the registrar has no refusal to record.
+        let _ = r.block_entity_part(&furnaces, Furnace);
         let heater = r
             .block_entity_type("heater")
             .blocks(&["ironfurnaces:heater"])
             .build();
-        r.block_entity_part(&heater, Heater)
-            .expect("ironfurnaces:heater is a native block entity type");
+        let _ = r.block_entity_part(&heater, Heater);
         r.block_entity_capability_before_game(&ITEMS, &furnaces, |_, at, _, _, offer| {
             offer.offer(|| Box::new(caps::FurnaceItems(at)))
         });

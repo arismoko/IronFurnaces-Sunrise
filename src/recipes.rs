@@ -248,4 +248,18 @@ mod tests {
         assert_eq!(red_augment(Some(3), 1, 2), Red::None);
         assert_eq!(Kind::Blasting.index(), 1);
     }
+
+    #[test]
+    fn absent_metal_recipes_keep_their_tag_empty_conditions() {
+        let recipes = [
+            include_str!("../data/ironfurnaces/recipe/furnaces/silver_furnace.json"),
+            include_str!("../data/ironfurnaces/recipe/furnaces/copper_furnace.json"),
+            include_str!("../data/ironfurnaces/recipe/rainbow_plating.json"),
+            include_str!("../data/ironfurnaces/recipe/upgrades/upgrade_silver.json"),
+        ];
+        for json in recipes {
+            assert!(json.contains("\"neoforge:conditions\""));
+            assert!(json.contains("\"neoforge:tag_empty\""));
+        }
+    }
 }

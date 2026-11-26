@@ -23,6 +23,6 @@ machine_work = { version = "^0.1", optional = true }
 
 [native]
 game = "26.3"
-# Pinned to Sunrise Dev 2026-11-25 (bdad86d).
+# Pinned to Sunrise Dev 2026-11-25 (interim 6a02076f89).
 sunrise = "6a02076f89cd189d74d63492dda5b023fa85a38f"
 mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"

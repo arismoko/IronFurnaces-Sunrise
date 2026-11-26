@@ -35,12 +35,15 @@ pub(crate) fn register(r: &mut dyn Registrar) {
         .copy_on_death();
     // A refusal is recorded on the load by the registrar itself.
     if let Ok(key) = r.register_attachment_type(descriptor) {
-        *FURNACES_LIST.write().unwrap() = Some(key);
+        *FURNACES_LIST.write().unwrap_or_else(|e| e.into_inner()) = Some(key);
     }
 }
 
 fn key() -> Option<AttachmentKey<Vec<Pos>>> {
-    FURNACES_LIST.read().unwrap().clone()
+    FURNACES_LIST
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
 }
 
 pub(crate) fn add(host: &mut dyn ServerHost, player: u128, pos: Pos) {

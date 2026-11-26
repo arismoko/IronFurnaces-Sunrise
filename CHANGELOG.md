@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The 15 recipes for Silver, Allthemodium, Vibranium, Unobtainium and Copper (and the Rainbow Plating) carry the original's `neoforge:tag_empty` load conditions again: Sunrise now reads tags at startup (sunrise-org/sunrise#5491).
+- The `c:` tags for copper, iron and gold ingots, diamonds, obsidians, colourless glass and gold blocks come from Sunrise's own seeded tags; the copies in `data/c/` are gone (sunrise-org/sunrise#1244).
+
 ## 4.4.13 (2026-11-24)
 
 - Shift-clicking a whole stack empties its slot; the stand-in item that used to fill it is gone.

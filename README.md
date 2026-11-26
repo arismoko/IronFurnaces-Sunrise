@@ -4,7 +4,7 @@ This is Iron Furnaces 4.4.2 (Qelifern, XenoMustache, Astryxion) as a native Sunr
 only: hooks and Parts, with no `[native.*]` rows. The Rust code is a rewrite, checked against the decompiled 4.4.2 jar.
 The textures, models, recipes, loot tables and language files are the original mod's.
 
-The build is pinned to Sunrise Dev 2026-11-25, commit `bdad86d` (`sunrise-mod.toml`). The optional dependencies are:
+The build is pinned to Sunrise Dev 2026-11-25, commit `6a02076f89` (`sunrise-mod.toml`). The optional dependencies are:
 
 - JEI (`^0.5`): the generator categories.
 - AE2 (`^15.4.13`): `ae2::api::register_machine`, for its crafting ETA.
@@ -35,7 +35,7 @@ Each one turns on the Cargo feature named after it when it is installed.
   - `ae2_eta.rs`: the same times through `ae2::api::register_machine`, for an AE2 without the library.
   - `commands_menu.rs`: `/ironfurnaces`.
 - `assets/` and `data/`: the jar's files as they are, plus Sunrise's declarations under `data/ironfurnaces/sunrise/`.
-  `data/c/` also holds 23 convention tags that the original took from NeoForge (see below).
+  `data/c/` also holds 16 convention tags that the original took from NeoForge and Sunrise doesn't seed on its own (see below).
 
 ## Build
 
@@ -75,18 +75,16 @@ Each one turns on the Cargo feature named after it when it is installed.
 
 Each comes from a piece the mod API doesn't have yet, filed on Sunrise:
 
-- **Convention tags.** Sunrise doesn't ship the `c:` tags yet, so the recipes' tags (`c:ingots/iron` and the like) are
-  written in `data/c/` here with their vanilla entries, and empty for other mods' metals (sunrise-org/sunrise#1244).
+- **Convention tags.** Sunrise seeds the `c:` tags for copper, iron and gold ingots, diamonds, obsidians, colourless
+  glass and gold blocks, so the recipes use them from the game (sunrise-org/sunrise#1244, now merged). `data/c/` keeps
+  only the tags the original declared beyond those (the metals' and gems' other entries, the furnace tags, and the
+  empty Silver, Allthemodium, Vibranium and Unobtainium ones). The recipes of those absent metals carry the original's
+  `neoforge:tag_empty` conditions, which Sunrise answers at startup (sunrise-org/sunrise#5491, now merged).
 - **Item data.** The Settings Linker's settings and the transmitter item's energy live in `minecraft:custom_data`. The
   Java mod registers its own component types (sunrise-org/sunrise#1243).
 - **Comparator.** The comparator output is computed in the furnace's tick and kept for `analog_output`, so it trails a
   change of contents by up to a tick. `analog_output` can't read an item's maximum stack size
   (sunrise-org/sunrise#5473).
-- **Recipes for absent metals.** The original guards its Silver, Allthemodium, Vibranium, Unobtainium and Copper
-  furnace and upgrade recipes, and the Rainbow Plating, with `neoforge:conditions` that hide them when no mod adds the
-  metal. Sunrise's startup recipe load can't read tags yet, so a recipe with such a condition stops the game. Here the
-  recipes carry no conditions: while the metal is absent, Sunrise leaves them out anyway, because their ingredient tag
-  is empty, and logs a warning for each (sunrise-org/sunrise#5491).
 - **JEI cards.** In JEI, a generator card shows its energy as text under the card, and its flame and energy bar are not
   animated. This is a limit of the JEI port's recipe API, not of Sunrise's.
 
