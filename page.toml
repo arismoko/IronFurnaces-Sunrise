@@ -17,10 +17,8 @@ What it does:
 
 Differences from the original, each waiting on a piece of Sunrise's mod API:
 
-- Sunrise doesn't ship the `c:` convention tags yet, so this mod carries the ones its recipes use (sunrise-org/sunrise#1244).
 - The Settings Linker's settings and the transmitter's energy are kept in the item's custom data instead of the original's own item components (sunrise-org/sunrise#1243).
 - A comparator reads the furnace's contents as of its last tick, so it can trail a change by a tick (sunrise-org/sunrise#5473).
-- The recipes for metals no installed mod adds (Silver, Allthemodium and the like) are left out with a warning in the log, where the original's load conditions leave them out silently (sunrise-org/sunrise#5491).
 
 In JEI, a generator card shows its energy as text under the card, and its flame and energy bar are not animated: a limit of the JEI port's recipe API, not of Sunrise's.
 """
